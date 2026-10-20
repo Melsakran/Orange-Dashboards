@@ -935,7 +935,8 @@ export function DashboardShell({
                         && !isDigitalStyleWorkspace(workspace.slug)
                       }
                       showDescription={
-                        workspace.slug === "pe-ops"
+                        workspace.slug === "hot-topics"
+                        || workspace.slug === "pe-ops"
                         || workspace.slug === "datalake-ops"
                         || isDigitalStyleWorkspace(workspace.slug)
                       }

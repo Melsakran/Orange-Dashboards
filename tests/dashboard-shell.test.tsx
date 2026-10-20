@@ -268,6 +268,42 @@ describe("DashboardShell", () => {
     expect(dot).toHaveAttribute("aria-hidden", "true");
   });
 
+  it("shows Hot Topics descriptions only when they contain text", () => {
+    const hotTopicsDashboard = mapFixtureWorkspace({
+      slug: "hot-topics",
+      name: "Hot Topics Daily Follow-up",
+      description: "Daily follow-up",
+      projects: [
+        {
+          id: "with-text",
+          title: "Has notes",
+          status: "in-progress",
+          owner: "Avery",
+          priority: "high",
+          progress: 10,
+          description: "Escalated to vendor",
+          comments: [],
+        },
+        {
+          id: "blank",
+          title: "No notes",
+          status: "in-progress",
+          owner: "Morgan",
+          priority: "low",
+          progress: 0,
+          description: "   ",
+          comments: [],
+        },
+      ],
+    });
+    render(<DashboardShell initialDashboard={hotTopicsDashboard} source="fixture" />);
+
+    expect(screen.getByRole("region", { name: "Has notes description" }))
+      .toHaveTextContent("Escalated to vendor");
+    expect(screen.queryByRole("region", { name: "No notes description" }))
+      .not.toBeInTheDocument();
+  });
+
   it("labels the all filter as All Tasks and shows Deployments for Data Lake Ops", () => {
     const datalakeDashboard = mapFixtureWorkspace({
       slug: "datalake-ops",
