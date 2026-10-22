@@ -9,24 +9,25 @@ import { createClient } from "@/lib/supabase/client";
 export function DeleteReport({ reportDate, onDeleted }: { reportDate: string; onDeleted: () => void }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<{ date: string; message: string } | null>(null);
   const busyRef = useRef(false);
   const cancel = useCallback(() => {
     if (!busyRef.current) setConfirming(false);
   }, []);
+  const error = failure?.date === reportDate ? failure : null;
 
-  async function confirmDelete() {
+  async function deleteDate(date: string) {
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
-    setError(null);
     try {
-      await deletePeDailyReport(createClient(), reportDate);
+      await deletePeDailyReport(createClient(), date);
+      setFailure(null);
       setConfirming(false);
       onDeleted();
     } catch (caught) {
       setConfirming(false);
-      setError(caught instanceof Error ? caught.message : "Deleting the report failed.");
+      setFailure({ date, message: caught instanceof Error ? caught.message : "Deleting the report failed." });
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -39,7 +40,7 @@ export function DeleteReport({ reportDate, onDeleted }: { reportDate: string; on
         type="button"
         className="secondary-button delete-confirm-button"
         onClick={() => {
-          setError(null);
+          setFailure(null);
           setConfirming(true);
         }}
       >
@@ -47,8 +48,10 @@ export function DeleteReport({ reportDate, onDeleted }: { reportDate: string; on
       </button>
       {error ? (
         <div className="mutation-notice" role="alert">
-          <span>{error}</span>
-          <button type="button" onClick={() => void confirmDelete()}>Retry</button>
+          <span>{error.message}</span>
+          <button type="button" disabled={busy} onClick={() => void deleteDate(error.date)}>
+            {busy ? "Deleting…" : "Retry"}
+          </button>
         </div>
       ) : null}
       {confirming ? (
@@ -56,7 +59,7 @@ export function DeleteReport({ reportDate, onDeleted }: { reportDate: string; on
           title={`Delete the ${formatReportDate(reportDate)} report?`}
           message="This deletes the uploaded data and the admin-entered sections for this date. This can't be undone."
           confirmLabel="Delete report"
-          onConfirm={() => void confirmDelete()}
+          onConfirm={() => void deleteDate(reportDate)}
           onCancel={cancel}
           busy={busy}
         />

@@ -98,6 +98,7 @@ export function PeDailyPage({
               <ChartSettings visibleCharts={visibleCharts} onSaved={refresh} />
               {report ? (
                 <DeleteReport
+                  key={report.reportDate}
                   reportDate={report.reportDate}
                   onDeleted={() => {
                     router.push(PAGE_PATH);

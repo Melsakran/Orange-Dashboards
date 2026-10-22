@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PeDailyPage } from "@/components/pe-daily/pe-daily-page";
-import { makePageData } from "./fixtures/pe-daily";
+import { makePageData, makeReport } from "./fixtures/pe-daily";
 
 const push = vi.hoisted(() => vi.fn());
 const refresh = vi.hoisted(() => vi.fn());
@@ -140,5 +140,21 @@ describe("PE Daily Report admin tools", () => {
     await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/pe-daily-report"));
     expect(mutations.deletePeDailyReport).toHaveBeenLastCalledWith(fakeClient, "2026-10-22");
     expect(refresh).toHaveBeenCalled();
+  });
+
+  it("drops a failed delete's Retry when the shown date changes", async () => {
+    const user = userEvent.setup();
+    mutations.deletePeDailyReport.mockRejectedValueOnce(new Error("Deleting the report failed: timeout"));
+    const { rerender } = render(<PeDailyPage data={makePageData()} isAdmin />);
+
+    await user.click(screen.getByRole("button", { name: "Delete this date" }));
+    const confirm = screen.getByRole("dialog", { name: "Delete the 22 Oct 2026 report?" });
+    await user.click(within(confirm).getByRole("button", { name: "Delete report" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Deleting the report failed: timeout");
+
+    rerender(<PeDailyPage data={makePageData({ report: makeReport({ reportDate: "2026-10-21" }) })} isAdmin />);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+    expect(mutations.deletePeDailyReport).toHaveBeenCalledTimes(1);
   });
 });

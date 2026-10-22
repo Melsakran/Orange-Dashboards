@@ -41,7 +41,6 @@ export function ChartSettings({
     setSaveError(null);
     try {
       await savePeDailyChartSettings(createClient(), selected);
-      savingRef.current = false;
       setOpen(false);
       onSaved();
     } catch (error) {
