@@ -8,6 +8,9 @@ import { formatUploadedAt } from "@/lib/ops/analytics";
 import { formatReportDate } from "@/lib/pe-daily/format";
 import type { PeDailyPageData } from "@/lib/pe-daily/types";
 import { ReportSections } from "./report-sections";
+import { ChartSettings } from "./chart-settings";
+import { DeleteReport } from "./delete-report";
+import { ReportUpload } from "./report-upload";
 
 export const PAGE_PATH = "/pe-daily-report";
 
@@ -83,6 +86,27 @@ export function PeDailyPage({
           {headerLine ? <p className="workspace-description">{headerLine}</p> : null}
         </div>
         <div className="header-tools">
+          {isAdmin ? (
+            <div className="pe-daily-admin-tools">
+              <ReportUpload
+                existingDates={dates}
+                onUploaded={(date) => {
+                  router.push(reportHref(date));
+                  router.refresh();
+                }}
+              />
+              <ChartSettings visibleCharts={visibleCharts} onSaved={refresh} />
+              {report ? (
+                <DeleteReport
+                  reportDate={report.reportDate}
+                  onDeleted={() => {
+                    router.push(PAGE_PATH);
+                    router.refresh();
+                  }}
+                />
+              ) : null}
+            </div>
+          ) : null}
           {dates.length && !loadError ? (
             <label className="form-field pe-daily-date-field">
               <span>Report date</span>

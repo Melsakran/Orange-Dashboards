@@ -1,25 +1,14 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { FilePickerButton } from "@/components/ui/file-picker-button";
 import { ModalDialog } from "@/components/ui/modal-dialog";
+import { useFileUpload } from "@/components/ui/use-file-upload";
 import { countByStatus } from "@/lib/ops/analytics";
 import { replaceOpsRequests } from "@/lib/ops/mutations";
 import { normalizeRequests, type NormalizeResult } from "@/lib/ops/normalize";
-import { parseSheetFile } from "@/lib/sheets/parse-sheet";
 import { OPS_STATUSES, OPS_STATUS_LABELS } from "@/lib/ops/types";
+import { parseSheetFile } from "@/lib/sheets/parse-sheet";
 import { createClient } from "@/lib/supabase/client";
-
-type UploadState =
-  | { phase: "idle" }
-  | { phase: "reading"; fileName: string }
-  | { phase: "failed"; fileName: string; message: string }
-  | {
-      phase: "review";
-      fileName: string;
-      result: NormalizeResult;
-      saving: boolean;
-      saveError: string | null;
-    };
 
 function UploadReview({
   result,
@@ -97,74 +86,18 @@ function UploadReview({
 }
 
 export function OpsUpload({ onUploaded }: { onUploaded: () => void }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [state, setState] = useState<UploadState>({ phase: "idle" });
-  const attemptRef = useRef(0);
-  const close = useCallback(
-    () =>
-      setState((current) =>
-        current.phase === "review" && current.saving ? current : { phase: "idle" },
-      ),
-    [],
-  );
-
-  async function readFile(file: File) {
-    const attempt = ++attemptRef.current;
-    setState({ phase: "reading", fileName: file.name });
-    let next: UploadState;
-    try {
-      const result = normalizeRequests(await parseSheetFile(file));
-      next = { phase: "review", fileName: file.name, result, saving: false, saveError: null };
-    } catch (error) {
-      next = {
-        phase: "failed",
-        fileName: file.name,
-        message: error instanceof Error ? error.message : "The file could not be read.",
-      };
-    }
-    if (attempt !== attemptRef.current) return;
-    setState((current) => (current.phase === "reading" ? next : current));
-  }
-
-  async function save() {
-    if (state.phase !== "review" || !state.result.ok || state.saving) return;
-    const attempt = attemptRef.current;
-    const { fileName, result } = state;
-    setState({ ...state, saving: true, saveError: null });
-    try {
-      await replaceOpsRequests(createClient(), fileName, result.requests);
-      if (attempt !== attemptRef.current) return;
-      setState({ phase: "idle" });
-      onUploaded();
-    } catch (error) {
-      if (attempt !== attemptRef.current) return;
-      setState({
-        phase: "review",
-        fileName,
-        result,
-        saving: false,
-        saveError: error instanceof Error ? error.message : "Upload failed.",
-      });
-    }
-  }
+  const { state, close, chooseFile, confirm } = useFileUpload<NormalizeResult>({
+    read: async (file) => normalizeRequests(await parseSheetFile(file)),
+    canSave: (result) => result.ok,
+    save: async (fileName, result) => {
+      if (result.ok) await replaceOpsRequests(createClient(), fileName, result.requests);
+    },
+    onSaved: () => onUploaded(),
+  });
 
   return (
     <>
-      <button type="button" className="primary-button" onClick={() => inputRef.current?.click()}>
-        Upload
-      </button>
-      <input
-        ref={inputRef}
-        type="file"
-        className="ops-file-input"
-        accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        aria-label="Choose a CSV or Excel file to upload"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          event.target.value = "";
-          if (file) void readFile(file);
-        }}
-      />
+      <FilePickerButton inputLabel="Choose a CSV or Excel file to upload" onFile={(file) => void chooseFile(file)} />
       {state.phase !== "idle" ? (
         <ModalDialog
           labelledBy="ops-upload-title"
@@ -186,7 +119,7 @@ export function OpsUpload({ onUploaded }: { onUploaded: () => void }) {
               saving={state.saving}
               saveError={state.saveError}
               onCancel={close}
-              onConfirm={() => void save()}
+              onConfirm={() => void confirm()}
             />
           ) : null}
         </ModalDialog>
