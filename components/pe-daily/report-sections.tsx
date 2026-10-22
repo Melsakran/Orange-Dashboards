@@ -44,7 +44,7 @@ function SmsTable({ rows }: { rows: SmsCounts[] }) {
   if (!groups.length) return <p className="pe-daily-empty">No entries</p>;
   return (
     <div className="pe-daily-table-wrap">
-      <table className="pe-daily-table" aria-label="SMS">
+      <table className="pe-daily-table pe-daily-table-grouped" aria-label="SMS">
         <thead>
           <tr>
             <th scope="col" className="pe-daily-number">#</th>
@@ -60,7 +60,13 @@ function SmsTable({ rows }: { rows: SmsCounts[] }) {
             (["offline", "online"] as const).map((channel, channelIndex) => {
               const counts = group[channel];
               return (
-                <tr key={`${group.promo}-${channel}`}>
+                <tr
+                  key={`${group.promo}-${channel}`}
+                  className={[
+                    channelIndex === 0 ? "pe-daily-group-start" : "",
+                    index % 2 === 1 ? "pe-daily-group-odd" : "",
+                  ].filter(Boolean).join(" ") || undefined}
+                >
                   {channelIndex === 0 ? (
                     <>
                       <td rowSpan={2} className="pe-daily-number">{index + 1}</td>

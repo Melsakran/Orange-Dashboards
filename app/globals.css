@@ -470,18 +470,27 @@ h1 {
 
 .pe-complexity-table th,
 .pe-complexity-table td {
-  padding: 8px 0;
+  padding: 8px 10px;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   text-align: left;
   vertical-align: middle;
 }
 
 .pe-complexity-table thead th {
-  color: var(--muted);
+  border-bottom: 2px solid var(--orange);
+  color: var(--orange-dark);
   font-size: 11px;
   font-weight: 750;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.pe-complexity-table tbody tr > * {
+  transition: background-color 120ms ease;
+}
+
+.pe-complexity-table tbody tr:hover > * {
+  background: color-mix(in srgb, var(--orange-soft) 80%, transparent);
 }
 
 .pe-complexity-table tbody th {
@@ -490,7 +499,8 @@ h1 {
 }
 
 .pe-complexity-table td {
-  color: var(--muted);
+  color: color-mix(in srgb, var(--orange-dark) 75%, var(--text));
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
@@ -2488,35 +2498,102 @@ footer {
   font-variant-numeric: tabular-nums;
 }
 
-.ops-table-wrap {
+.ops-table-wrap,
+.pe-daily-table-wrap {
   overflow-x: auto;
+  border: 1px solid color-mix(in srgb, var(--orange) 22%, var(--border));
+  border-radius: 12px;
+  background: var(--surface);
 }
 
-.ops-table {
+.ops-table,
+.pe-daily-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 13px;
 }
 
 .ops-table th,
-.ops-table td {
-  padding: 9px 10px;
-  border-bottom: 1px solid var(--border);
+.ops-table td,
+.pe-daily-table th,
+.pe-daily-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   text-align: left;
   vertical-align: top;
 }
 
-.ops-table thead th {
-  color: var(--muted);
+.ops-table thead th,
+.pe-daily-table thead th {
+  border-bottom: 2px solid var(--orange);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--orange) 16%, var(--surface)),
+    color-mix(in srgb, var(--orange) 8%, var(--surface))
+  );
+  color: var(--orange-dark);
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-weight: 750;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
-.ops-table .ops-number {
+.ops-table tbody tr > *,
+.pe-daily-table tbody tr > * {
+  transition: background-color 120ms ease;
+}
+
+.ops-table tbody tr:nth-child(even) > *,
+.pe-daily-table:where(:not(.pe-daily-table-grouped)) tbody tr:nth-child(even) > * {
+  background: color-mix(in srgb, var(--surface-soft) 55%, var(--surface));
+}
+
+.ops-table tbody tr:last-child > *,
+.pe-daily-table tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+.ops-table tbody th,
+.pe-daily-table tbody th {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.ops-table tbody td,
+.pe-daily-table tbody td {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.ops-table .ops-number,
+.pe-daily-table .pe-daily-number {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.ops-table tbody .ops-number,
+.pe-daily-table tbody .pe-daily-number {
+  color: color-mix(in srgb, var(--orange-dark) 75%, var(--text));
+  font-weight: 650;
+}
+
+.pe-daily-table-grouped tbody tr.pe-daily-group-start > * {
+  border-top: 1px solid color-mix(in srgb, var(--orange) 25%, var(--border));
+}
+
+.pe-daily-table-grouped tbody tr:first-child > * {
+  border-top: 0;
+}
+
+.pe-daily-table-grouped tbody tr.pe-daily-group-odd > * {
+  background: color-mix(in srgb, var(--surface-soft) 55%, var(--surface));
+}
+
+.ops-table tbody tr:hover > *,
+.pe-daily-table tbody tr:hover > * {
+  background: color-mix(in srgb, var(--orange-soft) 80%, var(--surface));
 }
 
 .ops-legend {
@@ -2702,37 +2779,6 @@ footer {
 .pe-daily-panel-actions {
   display: flex;
   gap: 8px;
-}
-
-.pe-daily-table-wrap {
-  overflow-x: auto;
-}
-
-.pe-daily-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.pe-daily-table th,
-.pe-daily-table td {
-  padding: 9px 10px;
-  border-bottom: 1px solid var(--border);
-  text-align: left;
-  vertical-align: top;
-}
-
-.pe-daily-table thead th {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.pe-daily-table .pe-daily-number {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
 }
 
 .pe-daily-empty,
