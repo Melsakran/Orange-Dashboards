@@ -127,6 +127,16 @@ describe("weeklyBuckets", () => {
   it("returns no buckets for no rows", () => {
     expect(weeklyBuckets([])).toEqual([]);
   });
+
+  it("does not count non-closed requests with a close date as closed", () => {
+    expect(weeklyBuckets([
+      makeOpsRequest({
+        status: "pending",
+        assignmentTime: "2026-05-04T09:00:00",
+        closeDate: "2026-05-05T09:00:00",
+      }),
+    ])).toEqual([{ weekStart: "2026-05-04", assigned: 1, closed: 0 }]);
+  });
 });
 
 describe("filterRequests", () => {
@@ -144,6 +154,13 @@ describe("filterRequests", () => {
     expect(search("CUSTOMER LIST")).toEqual(["SD1004"]);
     expect(search("production")).toEqual(["SD1001"]);
     expect(search("sd1002")).toEqual(["SD1002"]);
+  });
+
+  it("does not search the Title column", () => {
+    expect(filterRequests(
+      [makeOpsRequest({ interactionId: "SD9", title: "New Task", requestTitle: "Report" })],
+      { status: "all", assigneeKey: "all", query: "new task" },
+    )).toEqual([]);
   });
 });
 

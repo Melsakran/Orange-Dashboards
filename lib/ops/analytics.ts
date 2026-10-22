@@ -188,7 +188,7 @@ export function weeklyBuckets(requests: OpsRequest[]): WeekBucket[] {
   requests.forEach((request) => {
     const assignedWeek = weekStartMs(timestampMs(request.assignmentTime));
     assigned.set(assignedWeek, (assigned.get(assignedWeek) ?? 0) + 1);
-    if (request.closeDate) {
+    if (request.status === "closed" && request.closeDate) {
       const closedWeek = weekStartMs(timestampMs(request.closeDate));
       closed.set(closedWeek, (closed.get(closedWeek) ?? 0) + 1);
     }
@@ -214,7 +214,6 @@ export function filterRequests(requests: OpsRequest[], filters: RequestFilters):
     .filter((request) => filters.assigneeKey === "all" || request.assignedToKey === filters.assigneeKey)
     .filter((request) => !query || [
       request.interactionId,
-      request.title,
       request.requestTitle,
       request.description,
       request.requestorName,
