@@ -96,6 +96,7 @@ function SectionEditor({
                         value={draft[field.key] ?? ""}
                         inputMode={field.type === "count" ? "numeric" : undefined}
                         aria-label={`${field.label}, row ${index + 1}`}
+                        aria-required={field.required ? true : undefined}
                         aria-invalid={error ? true : undefined}
                         aria-describedby={error ? `${id}-error` : undefined}
                         disabled={saving}
@@ -144,35 +145,41 @@ function SectionEditor({
 }
 
 export function ManualSection({ section, rows, reportDate, isAdmin, onSaved, children }: ManualSectionProps) {
-  const [drafts, setDrafts] = useState<DraftRow[] | null>(null);
+  const [editing, setEditing] = useState<{ reportDate: string; rows: DraftRow[] } | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const drafts = editing?.reportDate === reportDate ? editing.rows : null;
   const validation = drafts ? validateDraftRows(section, drafts) : null;
 
   function startEditing() {
-    setDrafts(rows.length ? rows.map((row) => toDraftRow(section, row)) : [emptyDraftRow(section)]);
+    setEditing({
+      reportDate,
+      rows: rows.length ? rows.map((row) => toDraftRow(section, row)) : [emptyDraftRow(section)],
+    });
     setSaveError(null);
   }
 
   function cancel() {
     if (saving) return;
-    setDrafts(null);
+    setEditing(null);
     setSaveError(null);
+  }
+
+  function updateRows(update: (rows: DraftRow[]) => DraftRow[]) {
+    setEditing((current) => (current ? { ...current, rows: update(current.rows) } : current));
   }
 
   function updateDraft(index: number, key: string, value: string) {
-    setDrafts((current) =>
-      current ? current.map((draft, i) => (i === index ? { ...draft, [key]: value } : draft)) : current,
-    );
+    updateRows((current) => current.map((draft, i) => (i === index ? { ...draft, [key]: value } : draft)));
   }
 
   async function save() {
-    if (!validation?.valid || saving) return;
+    if (!editing || editing.reportDate !== reportDate || !validation?.valid || saving) return;
     setSaving(true);
     setSaveError(null);
     try {
-      await savePeDailySection(createClient(), reportDate, section.key, validation.rows);
-      setDrafts(null);
+      await savePeDailySection(createClient(), editing.reportDate, section.key, validation.rows);
+      setEditing(null);
       onSaved();
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Saving the section failed.");
@@ -202,8 +209,8 @@ export function ManualSection({ section, rows, reportDate, isAdmin, onSaved, chi
           saving={saving}
           saveError={saveError}
           onChange={updateDraft}
-          onAdd={() => setDrafts((current) => (current ? [...current, emptyDraftRow(section)] : current))}
-          onRemove={(index) => setDrafts((current) => (current ? current.filter((_, i) => i !== index) : current))}
+          onAdd={() => updateRows((current) => [...current, emptyDraftRow(section)])}
+          onRemove={(index) => updateRows((current) => current.filter((_, i) => i !== index))}
           onCancel={cancel}
           onSave={() => void save()}
         />

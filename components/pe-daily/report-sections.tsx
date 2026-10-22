@@ -97,6 +97,7 @@ export function ReportSections({
   const { visible, hiddenCount } = splitLargePromos(report.promos, hideLarge);
   const manual = (key: SectionKey, chart?: ReactNode) => (
     <ManualSection
+      key={`${key}-${report.reportDate}`}
       section={SECTIONS[key]}
       rows={report.manual[key]}
       reportDate={report.reportDate}

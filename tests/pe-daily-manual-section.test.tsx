@@ -42,6 +42,8 @@ describe("ManualSection", () => {
 
     const status = screen.getByLabelText("Status, row 1");
     expect(screen.getByLabelText("Action, row 1")).toHaveValue("Restart provisioning job");
+    expect(screen.getByLabelText("Action, row 1")).toHaveAttribute("aria-required", "true");
+    expect(status).not.toHaveAttribute("aria-required");
     await user.clear(status);
     await user.type(status, "In progress");
     await user.click(screen.getByRole("button", { name: "Add row" }));
@@ -109,6 +111,30 @@ describe("ManualSection", () => {
 
     expect(savePeDailySection).not.toHaveBeenCalled();
     expect(screen.getByRole("table", { name: "Actions" })).toHaveTextContent("Restart provisioning job");
+  });
+
+  it("closes the editor without saving when the report date changes", async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderActions();
+    await user.click(screen.getByRole("button", { name: "Edit Actions" }));
+    await user.clear(screen.getByLabelText("Status, row 1"));
+    await user.type(screen.getByLabelText("Status, row 1"), "Blocked");
+
+    rerender(
+      <ManualSection
+        section={SECTIONS.actions}
+        rows={[{ action: "Rotate API keys", status: "Pending" }]}
+        reportDate="2026-10-21"
+        isAdmin
+        onSaved={onSaved}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+    const table = screen.getByRole("table", { name: "Actions" });
+    expect(table).toHaveTextContent("Rotate API keys");
+    expect(table).not.toHaveTextContent("Restart provisioning job");
+    expect(savePeDailySection).not.toHaveBeenCalled();
   });
 
   it("keeps the edits and offers Retry when saving fails", async () => {
