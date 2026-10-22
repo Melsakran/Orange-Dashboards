@@ -549,6 +549,105 @@ export type Database = {
         };
         Relationships: [];
       };
+      pe_daily_manual_rows: {
+        Row: { fields: Json; position: number; report_date: string; section: string };
+        Insert: { fields: Json; position: number; report_date: string; section: string };
+        Update: { fields?: Json; position?: number; report_date?: string; section?: string };
+        Relationships: [];
+      };
+      pe_daily_promos: {
+        Row: {
+          day_before: number;
+          last_week: number;
+          position: number;
+          promo: string;
+          report_date: string;
+          yesterday: number;
+        };
+        Insert: {
+          day_before: number;
+          last_week: number;
+          position: number;
+          promo: string;
+          report_date: string;
+          yesterday: number;
+        };
+        Update: {
+          day_before?: number;
+          last_week?: number;
+          position?: number;
+          promo?: string;
+          report_date?: string;
+          yesterday?: number;
+        };
+        Relationships: [];
+      };
+      pe_daily_reports: {
+        Row: {
+          file_name: string;
+          report_date: string;
+          uploaded_at: string;
+          uploaded_by: string | null;
+          uploaded_by_email: string | null;
+        };
+        Insert: {
+          file_name: string;
+          report_date: string;
+          uploaded_at?: string;
+          uploaded_by?: string | null;
+          uploaded_by_email?: string | null;
+        };
+        Update: {
+          file_name?: string;
+          report_date?: string;
+          uploaded_at?: string;
+          uploaded_by?: string | null;
+          uploaded_by_email?: string | null;
+        };
+        Relationships: [];
+      };
+      pe_daily_settings: {
+        Row: { id: boolean; visible_charts: string[] };
+        Insert: { id?: boolean; visible_charts?: string[] };
+        Update: { id?: boolean; visible_charts?: string[] };
+        Relationships: [];
+      };
+      pe_daily_sms: {
+        Row: {
+          channel: string;
+          day_before: number;
+          last_week: number;
+          position: number;
+          promo: string;
+          report_date: string;
+          yesterday: number;
+        };
+        Insert: {
+          channel: string;
+          day_before: number;
+          last_week: number;
+          position: number;
+          promo: string;
+          report_date: string;
+          yesterday: number;
+        };
+        Update: {
+          channel?: string;
+          day_before?: number;
+          last_week?: number;
+          position?: number;
+          promo?: string;
+          report_date?: string;
+          yesterday?: number;
+        };
+        Relationships: [];
+      };
+      pe_daily_upselling: {
+        Row: { count: number; day: string; position: number; report_date: string };
+        Insert: { count: number; day: string; position: number; report_date: string };
+        Update: { count?: number; day?: string; position?: number; report_date?: string };
+        Relationships: [];
+      };
       statuses: {
         Row: {
           color: string;
@@ -786,6 +885,22 @@ export type Database = {
       };
       is_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
       replace_ops_requests: { Args: { p_file_name: string; p_rows: Json }; Returns: string };
+      delete_pe_daily_report: { Args: { p_report_date: string }; Returns: undefined };
+      save_pe_daily_chart_settings: { Args: { p_visible_charts: string[] }; Returns: undefined };
+      save_pe_daily_report: {
+        Args: {
+          p_file_name: string;
+          p_promos: Json;
+          p_report_date: string;
+          p_sms: Json;
+          p_upselling: Json;
+        };
+        Returns: undefined;
+      };
+      save_pe_daily_section: {
+        Args: { p_report_date: string; p_rows: Json; p_section: string };
+        Returns: undefined;
+      };
       lock_work_item_root_membership: {
         Args: Record<PropertyKey, never>;
         Returns: unknown;
