@@ -81,6 +81,10 @@ describe("ops requests database", () => {
     `);
     await db.exec(read("supabase/migrations/0001_core_schema.sql"));
     await db.exec(read("supabase/migrations/0002_security_audit_realtime.sql"));
+    await db.exec(`
+      alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+      alter default privileges in schema public grant execute on functions to anon, authenticated, service_role;
+    `);
     await db.exec(read("supabase/migrations/0033_ops_requests.sql"));
     await db.exec(`
       insert into auth.users (id) values ('${ADMIN_ID}'), ('${USER_ID}');

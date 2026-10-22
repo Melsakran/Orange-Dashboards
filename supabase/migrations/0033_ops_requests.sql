@@ -66,6 +66,8 @@ begin
     raise exception 'admin access required';
   end if;
 
+  lock table public.ops_requests in exclusive mode;
+
   if p_rows is null or jsonb_typeof(p_rows) <> 'array' then
     raise exception 'rows must be a JSON array';
   end if;
@@ -126,4 +128,5 @@ end;
 $$;
 
 revoke all on function public.replace_ops_requests(text, jsonb) from public;
+revoke all on function public.replace_ops_requests(text, jsonb) from anon;
 grant execute on function public.replace_ops_requests(text, jsonb) to authenticated;
