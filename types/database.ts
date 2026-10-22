@@ -468,6 +468,87 @@ export type Database = {
           },
         ];
       };
+      ops_request_uploads: {
+        Row: {
+          file_name: string;
+          id: string;
+          row_count: number;
+          uploaded_at: string;
+          uploaded_by: string | null;
+          uploaded_by_email: string | null;
+        };
+        Insert: {
+          file_name: string;
+          id?: string;
+          row_count: number;
+          uploaded_at?: string;
+          uploaded_by?: string | null;
+          uploaded_by_email?: string | null;
+        };
+        Update: {
+          file_name?: string;
+          id?: string;
+          row_count?: number;
+          uploaded_at?: string;
+          uploaded_by?: string | null;
+          uploaded_by_email?: string | null;
+        };
+        Relationships: [];
+      };
+      ops_requests: {
+        Row: {
+          assigned_to: string;
+          assigned_to_key: string;
+          assignment_time: string;
+          close_date: string | null;
+          closure_code: string;
+          closure_comments: string;
+          description: string;
+          id: string;
+          interaction_id: string;
+          request_title: string;
+          requestor_key: string;
+          requestor_name: string;
+          status: string;
+          title: string;
+          upload_id: string;
+        };
+        Insert: {
+          assigned_to?: string;
+          assigned_to_key?: string;
+          assignment_time: string;
+          close_date?: string | null;
+          closure_code?: string;
+          closure_comments?: string;
+          description?: string;
+          id?: string;
+          interaction_id: string;
+          request_title?: string;
+          requestor_key?: string;
+          requestor_name?: string;
+          status: string;
+          title?: string;
+          upload_id: string;
+        };
+        Update: {
+          assigned_to?: string;
+          assigned_to_key?: string;
+          assignment_time?: string;
+          close_date?: string | null;
+          closure_code?: string;
+          closure_comments?: string;
+          description?: string;
+          id?: string;
+          interaction_id?: string;
+          request_title?: string;
+          requestor_key?: string;
+          requestor_name?: string;
+          status?: string;
+          title?: string;
+          upload_id?: string;
+        };
+        Relationships: [];
+      };
       statuses: {
         Row: {
           color: string;
@@ -704,6 +785,7 @@ export type Database = {
         Returns: unknown;
       };
       is_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
+      replace_ops_requests: { Args: { p_file_name: string; p_rows: Json }; Returns: string };
       lock_work_item_root_membership: {
         Args: Record<PropertyKey, never>;
         Returns: unknown;
