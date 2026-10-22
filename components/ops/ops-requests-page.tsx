@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 import { BrandMark } from "@/components/ui/brand-mark";
 import {
   breakdownByClosureCode,
@@ -16,6 +17,7 @@ import { OpsBreakdowns } from "./ops-breakdowns";
 import { OpsKpis } from "./ops-kpis";
 import { OpsTicketList } from "./ops-ticket-list";
 import { OpsTimeline } from "./ops-timeline";
+import { OpsUpload } from "./ops-upload";
 
 let clientNowMs: number | null = null;
 
@@ -51,6 +53,8 @@ export function OpsRequestsPage({
   const { requests } = dataset;
   const nowMs = useSyncExternalStore(subscribeToNow, getClientNow, getServerNow);
   const [statusFilter, setStatusFilter] = useState<OpsStatusFilter>("all");
+  const router = useRouter();
+  const refresh = useCallback(() => router.refresh(), [router]);
 
   const kpis = useMemo(() => summarizeKpis(requests, nowMs), [nowMs, requests]);
   const closureCodes = useMemo(() => breakdownByClosureCode(requests), [requests]);
@@ -69,7 +73,9 @@ export function OpsRequestsPage({
           </div>
           <p className="workspace-description">{uploadSummary(dataset)}</p>
         </div>
-        <div className="header-tools" />
+        <div className="header-tools">
+          {isAdmin ? <OpsUpload onUploaded={refresh} /> : null}
+        </div>
       </header>
 
       {loadError ? (
