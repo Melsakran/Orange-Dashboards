@@ -1,0 +1,55 @@
+REPORT_DATE,,,
+22-10-2026,,,
+,,,
+PROMO                                                                                                                                                                                                   ,LAST_WEEK_COUNT,DAY_BEFORE_COUNT,YESTERDAY_COUNT
+shop-internet-gifts                                                                                                                                                                                     ,0,0,1
+postpaid-nba                                                                                                                                                                                            ,3,1,2
+free-max-wheel                                                                                                                                                                                          ,4,0,2
+loyalty                                                                                                                                                                                                 ,7,5,14
+summer2023-saheltactical                                                                                                                                                                                ,31,68,42
+marketplace-2026                                                                                                                                                                                        ,148,100,82
+usim-revamp                                                                                                                                                                                             ,750,882,853
+generic-promo                                                                                                                                                                                           ,1467,1342,1340
+segmented-ivr                                                                                                                                                                                           ,2684,2763,2680
+grand-master-revamp                                                                                                                                                                                     ,3400,3333,3186
+churn-campaign                                                                                                                                                                                          ,4825,1308,13859
+zero-balance-trigger                                                                                                                                                                                    ,5397,5441,5605
+freemax-kazyon                                                                                                                                                                                          ,6729,9078,10699
+gamification                                                                                                                                                                                            ,6870,7256,7238
+hybrid-acquisitions-revamp                                                                                                                                                                              ,21055,21088,22140
+GOPLUS                                                                                                                                                                                                  ,32187,33803,33824
+use-and-get-b2b-revamp                                                                                                                                                                                  ,34492,34531,31876
+mo-usability-offers                                                                                                                                                                                     ,35626,34594,35915
+summer-sharing-2024                                                                                                                                                                                     ,36369,37983,37074
+use-and-get-b2c                                                                                                                                                                                         ,51367,53534,52631
+hybrid-platform                                                                                                                                                                                         ,68792,72025,72423
+cash-in-campaign                                                                                                                                                                                        ,89522,81536,88807
+digital-telco                                                                                                                                                                                           ,113132,115193,117510
+opportunity                                                                                                                                                                                             ,122893,135021,115883
+customize-your-offer                                                                                                                                                                                    ,138517,145930,141376
+promo-dataplatform                                                                                                                                                                                      ,189933,192244,230006
+orange-coins                                                                                                                                                                                            ,273901,270548,272015
+charges-platform                                                                                                                                                                                        ,1959859,2041804,2024695
+revive                                                                                                                                                                                                  ,7603289,8471845,8823587
+,,,
+SERVICE                                                                                                                                                                                                                                                         ,LAST_WEEK_COUNT,DAY_BEFORE_COUNT,YESTERDAY_COUNT
+OFFLINE_charges-platform                                                                                                                                                                                                                                        ,3066693,3080900,3033645
+OFFLINE_customize-your-offer                                                                                                                                                                                                                                    ,428114,425423,427154
+OFFLINE_hybrid-platform                                                                                                                                                                                                                                         ,245676,253983,254612
+OFFLINE_promo-dataplatform                                                                                                                                                                                                                                      ,857213,887190,887703
+OFFLINE_revive                                                                                                                                                                                                                                                  ,13952684,14335238,14795483
+ONLINE_charges-platform                                                                                                                                                                                                                                         ,10895005,11191755,11103570
+ONLINE_customize-your-offer                                                                                                                                                                                                                                     ,354207,365988,361587
+ONLINE_hybrid-platform                                                                                                                                                                                                                                          ,1819250,1884631,1775542
+ONLINE_opportunity                                                                                                                                                                                                                                              ,3444720,3574499,3061708
+ONLINE_promo-dataplatform                                                                                                                                                                                                                                       ,1228042,1248908,1387626
+ONLINE_revive                                                                                                                                                                                                                                                   ,154752,163307,130766
+,,,
+DATE     ,UPSELLING_COUNT,,
+15-Oct-26,13310531,,
+16-Oct-26,13389818,,
+17-Oct-26,13746581,,
+18-Oct-26,13774674,,
+19-Oct-26,13676601,,
+20-Oct-26,13661474,,
+21-Oct-26,13625673,,
