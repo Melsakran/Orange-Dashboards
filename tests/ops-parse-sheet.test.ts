@@ -31,6 +31,18 @@ describe("parseCsv", () => {
     ]);
   });
 
+  it("keeps a quote that does not start a field", () => {
+    expect(parseCsv('id,desc\n1,27" monitor\n2,ok')).toEqual([
+      ["id", "desc"],
+      ["1", '27" monitor'],
+      ["2", "ok"],
+    ]);
+  });
+
+  it("rejects an unclosed quote", () => {
+    expect(() => parseCsv('id,desc\n1,"27 monitor\n2,ok')).toThrow("The CSV has an unclosed quote.");
+  });
+
   it("strips a leading byte-order mark", () => {
     expect(parseCsv("\uFEFFID,Status\nSD1,Open")[0]).toEqual(["ID", "Status"]);
   });

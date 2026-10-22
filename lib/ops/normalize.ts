@@ -23,7 +23,7 @@ export interface RowError {
 
 export type NormalizeResult =
   | { ok: true; requests: OpsRequest[] }
-  | { ok: false; missingHeaders: string[]; errors: RowError[] };
+  | { ok: false; missingHeaders: string[]; errors: RowError[]; fileError?: string };
 
 const DATE_PATTERN = /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/;
 
@@ -120,5 +120,9 @@ export function normalizeRequests(sheet: RawSheet): NormalizeResult {
     });
   }
 
-  return errors.length ? { ok: false, missingHeaders: [], errors } : { ok: true, requests };
+  if (errors.length) return { ok: false, missingHeaders: [], errors };
+  if (!requests.length) {
+    return { ok: false, missingHeaders: [], errors: [], fileError: "The file has no requests." };
+  }
+  return { ok: true, requests };
 }

@@ -130,6 +130,29 @@ describe("Ops Requests upload", () => {
     expect(within(dialog).queryByRole("button", { name: "Replace data" })).not.toBeInTheDocument();
   });
 
+  it("rejects a file with headers but no requests", async () => {
+    const user = userEvent.setup();
+    render(<OpsRequestsPage dataset={emptyDataset} isAdmin />);
+    const csv =
+      "Interaction ID,Status,Assignment Time,Title,Request Title,Description,Requestor Name,Close Date,Closure Code,Closure Comments,Assigned To\n";
+
+    await user.upload(chooseFile(), new File([csv], "empty.csv", { type: "text/csv" }));
+    const dialog = await screen.findByRole("dialog", { name: "empty.csv" });
+    expect(within(dialog).getByRole("alert")).toHaveTextContent("The file has no requests.");
+    expect(dialog).not.toHaveTextContent("Row 0");
+    expect(within(dialog).queryByRole("button", { name: "Replace data" })).not.toBeInTheDocument();
+  });
+
+  it("rejects a CSV with an unclosed quote", async () => {
+    const user = userEvent.setup();
+    render(<OpsRequestsPage dataset={emptyDataset} isAdmin />);
+
+    await user.upload(chooseFile(), new File(['id,desc\n1,"open'], "quote.csv", { type: "text/csv" }));
+    const dialog = await screen.findByRole("dialog", { name: "quote.csv" });
+    expect(within(dialog).getByRole("alert")).toHaveTextContent("The CSV has an unclosed quote.");
+    expect(within(dialog).queryByRole("button", { name: "Replace data" })).not.toBeInTheDocument();
+  });
+
   it("rejects unsupported file types", async () => {
     const user = userEvent.setup({ applyAccept: false });
     render(<OpsRequestsPage dataset={emptyDataset} isAdmin />);

@@ -90,7 +90,7 @@ describe("OpsRequestsPage", () => {
   });
 
   it("shows the empty state and load errors", () => {
-    render(
+    const { rerender } = render(
       <OpsRequestsPage
         dataset={{ requests: [], upload: null }}
         isAdmin={false}
@@ -98,7 +98,13 @@ describe("OpsRequestsPage", () => {
       />,
     );
     expect(screen.getByRole("alert")).toHaveTextContent("Could not load Ops Requests: boom");
-    expect(screen.getAllByText("No data uploaded yet").length).toBeGreaterThan(0);
+    expect(screen.getByText("Couldn't load the latest data")).toBeInTheDocument();
+    expect(screen.queryByText("No data uploaded yet")).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Ops request overview" })).not.toBeInTheDocument();
+
+    rerender(<OpsRequestsPage dataset={{ requests: [], upload: null }} isAdmin={false} />);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getAllByText("No data uploaded yet").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Couldn't load the latest data")).not.toBeInTheDocument();
   });
 });

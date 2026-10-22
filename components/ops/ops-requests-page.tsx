@@ -71,7 +71,9 @@ export function OpsRequestsPage({
             <BrandMark />
             <h1>Ops Requests</h1>
           </div>
-          <p className="workspace-description">{uploadSummary(dataset)}</p>
+          <p className="workspace-description">
+            {loadError ? "Couldn't load the latest data" : uploadSummary(dataset)}
+          </p>
         </div>
         <div className="header-tools">
           {isAdmin ? <OpsUpload onUploaded={refresh} /> : null}
@@ -82,9 +84,7 @@ export function OpsRequestsPage({
         <div className="mutation-notice" role="alert">
           <span>{loadError}</span>
         </div>
-      ) : null}
-
-      {requests.length ? (
+      ) : requests.length ? (
         <>
           <OpsKpis kpis={kpis} statusFilter={statusFilter} onStatusFilterChange={setStatusFilter} />
           <OpsTimeline weeks={weeks} />

@@ -72,6 +72,10 @@ begin
     raise exception 'rows must be a JSON array';
   end if;
 
+  if jsonb_array_length(p_rows) = 0 then
+    raise exception 'rows must not be empty';
+  end if;
+
   select email into v_email
     from public.admin_users
    where auth_user_id = (select auth.uid());

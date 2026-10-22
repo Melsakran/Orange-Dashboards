@@ -38,7 +38,10 @@ function UploadReview({
     return (
       <>
         <div className="mutation-notice" role="alert">
-          <span>This file can&apos;t be uploaded. Fix these problems and try again. Nothing was changed.</span>
+          <span>
+            This file can&apos;t be uploaded. {result.fileError ?? "Fix these problems and try again."} Nothing
+            was changed.
+          </span>
         </div>
         {result.missingHeaders.length ? (
           <p>Missing columns: {result.missingHeaders.join(", ")}</p>

@@ -93,6 +93,15 @@ describe("normalizeRequests", () => {
     expect(result).toEqual({ ok: false, missingHeaders: ["Closure Code", "Assigned To"], errors: [] });
   });
 
+  it("rejects a file with headers but no requests", () => {
+    expect(normalizeRequests(sheetOf([]))).toEqual({
+      ok: false,
+      missingHeaders: [],
+      errors: [],
+      fileError: "The file has no requests.",
+    });
+  });
+
   it("accepts headers in any order, any case, and with extra columns", () => {
     const columns = ["extra", ...[...REQUIRED_COLUMNS].reverse().map((column) => column.toUpperCase())];
     const table = [

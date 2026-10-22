@@ -20,6 +20,7 @@ export function parseCsv(text: string): string[][] {
   let row: string[] = [];
   let field = "";
   let inQuotes = false;
+  let fieldStarted = false;
 
   for (let index = 0; index < input.length; index += 1) {
     const char = input[index];
@@ -34,22 +35,27 @@ export function parseCsv(text: string): string[][] {
       } else {
         field += char;
       }
-    } else if (char === '"') {
+    } else if (char === '"' && !fieldStarted) {
       inQuotes = true;
+      fieldStarted = true;
     } else if (char === ",") {
       row.push(field);
       field = "";
+      fieldStarted = false;
     } else if (char === "\n" || char === "\r") {
       if (char === "\r" && input[index + 1] === "\n") index += 1;
       row.push(field);
       rows.push(row);
       row = [];
       field = "";
+      fieldStarted = false;
     } else {
       field += char;
+      fieldStarted = true;
     }
   }
 
+  if (inQuotes) throw new Error("The CSV has an unclosed quote.");
   if (field !== "" || row.length) {
     row.push(field);
     rows.push(row);

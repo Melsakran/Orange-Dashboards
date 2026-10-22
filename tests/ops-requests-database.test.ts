@@ -161,6 +161,7 @@ describe("ops requests database", () => {
       /check constraint/i,
     );
     await expectError(db, () => db.query("select public.replace_ops_requests('x.csv', '{}'::jsonb)"), /array/i);
+    await expectError(db, () => replace(db, "empty.csv", []), /must not be empty/i);
 
     expect(await interactionIds(db)).toEqual(["SD1", "SD2"]);
   });
