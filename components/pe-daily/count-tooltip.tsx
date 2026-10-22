@@ -5,6 +5,7 @@ interface TooltipEntry {
   name?: string | number;
   value?: unknown;
   color?: string;
+  hide?: boolean;
 }
 
 export function CountTooltip({
@@ -16,12 +17,13 @@ export function CountTooltip({
   payload?: ReadonlyArray<TooltipEntry>;
   label?: string | number;
 }) {
-  if (!active || !payload?.length) return null;
+  const visible = payload?.filter((entry) => entry.hide !== true) ?? [];
+  if (!active || !visible.length) return null;
   return (
     <div className="pe-daily-tooltip">
       <p className="pe-daily-tooltip-title">{label}</p>
       <ul>
-        {payload.map((entry) => (
+        {visible.map((entry) => (
           <li key={String(entry.dataKey ?? entry.name)}>
             <span
               className="pe-daily-tooltip-swatch"

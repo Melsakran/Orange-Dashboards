@@ -25,19 +25,21 @@ export const CHANNEL_SERIES: ChartSeries[] = [
 
 const SCROLL_AFTER = 15;
 const CATEGORY_WIDTH = 48;
-const INITIAL_WIDTH = 720;
+export const INITIAL_WIDTH = 720;
 
 export function SeriesLegend({
+  label,
   series,
   hidden,
   onToggle,
 }: {
+  label: string;
   series: ChartSeries[];
   hidden: ReadonlySet<string>;
   onToggle: (key: string) => void;
 }) {
   return (
-    <div className="pe-daily-legend" role="group" aria-label="Chart series">
+    <div className="pe-daily-legend" role="group" aria-label={label}>
       {series.map((entry) => (
         <button
           key={entry.key}
@@ -81,7 +83,7 @@ export function PromoBarChart({
 
   return (
     <figure className="pe-daily-chart" aria-label={label}>
-      <SeriesLegend series={series} hidden={hidden} onToggle={toggle} />
+      <SeriesLegend label={`${label} series`} series={series} hidden={hidden} onToggle={toggle} />
       <div className="pe-daily-chart-scroll">
         <div className="pe-daily-chart-canvas" style={{ minWidth, height }}>
           <ResponsiveContainer
@@ -100,7 +102,7 @@ export function PromoBarChart({
                 tick={{ fontSize: 11 }}
               />
               <YAxis tickFormatter={(value: number) => formatCompact(value)} width={56} tick={{ fontSize: 11 }} />
-              <Tooltip content={<CountTooltip />} cursor={{ fill: "rgba(229, 111, 24, 0.08)" }} />
+              <Tooltip content={<CountTooltip />} filterNull={false} cursor={{ fill: "rgba(229, 111, 24, 0.08)" }} />
               {series.map((entry) => (
                 <Bar
                   key={entry.key}

@@ -4,12 +4,13 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import type { ChartDatum } from "@/lib/pe-daily/chart-data";
 import { formatCompact } from "@/lib/pe-daily/format";
 import { CountTooltip } from "./count-tooltip";
+import { INITIAL_WIDTH } from "./promo-bar-chart";
 
 export function UpsellingTrendChart({ data, height = 300 }: { data: ChartDatum[]; height?: number }) {
   return (
     <figure className="pe-daily-chart" aria-label="Upselling trend">
       <div className="pe-daily-chart-canvas" style={{ height }}>
-        <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 720, height }}>
+        <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: INITIAL_WIDTH, height }}>
           <LineChart data={data} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="category" tick={{ fontSize: 11 }} />
@@ -19,7 +20,7 @@ export function UpsellingTrendChart({ data, height = 300 }: { data: ChartDatum[]
               tick={{ fontSize: 11 }}
               domain={["auto", "auto"]}
             />
-            <Tooltip content={<CountTooltip />} />
+            <Tooltip content={<CountTooltip />} filterNull={false} />
             <Line
               type="monotone"
               dataKey="count"

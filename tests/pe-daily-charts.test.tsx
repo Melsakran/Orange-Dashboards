@@ -31,6 +31,21 @@ describe("CountTooltip", () => {
     expect(document.body).toHaveTextContent("Yesterday: -");
   });
 
+  it("skips hidden series", () => {
+    render(
+      <CountTooltip
+        active
+        label="revive"
+        payload={[
+          { dataKey: "lastWeek", name: "Last week", value: 7603289, color: "#111", hide: true },
+          { dataKey: "yesterday", name: "Yesterday", value: 8471845, color: "#333" },
+        ]}
+      />,
+    );
+    expect(screen.queryByText(/Last week/)).not.toBeInTheDocument();
+    expect(document.body).toHaveTextContent("Yesterday: 8,471,845");
+  });
+
   it("renders nothing when inactive", () => {
     const { container } = render(<CountTooltip active={false} label="x" payload={[]} />);
     expect(container).toBeEmptyDOMElement();
@@ -44,6 +59,7 @@ describe("PromoBarChart", () => {
       <PromoBarChart label="Promos – H_DYNAMIC chart" data={promoChartData(report.promos)} series={PERIOD_SERIES} />,
     );
     const figure = screen.getByRole("figure", { name: "Promos – H_DYNAMIC chart" });
+    expect(screen.getByRole("group", { name: "Promos – H_DYNAMIC chart series" })).toBeInTheDocument();
     const yesterday = screen.getByRole("button", { name: "Yesterday" });
     expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual([
       "Last week",
