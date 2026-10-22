@@ -5,7 +5,7 @@ import { ModalDialog } from "@/components/ui/modal-dialog";
 import { countByStatus } from "@/lib/ops/analytics";
 import { replaceOpsRequests } from "@/lib/ops/mutations";
 import { normalizeRequests, type NormalizeResult } from "@/lib/ops/normalize";
-import { parseSheetFile } from "@/lib/ops/parse-sheet";
+import { parseSheetFile } from "@/lib/sheets/parse-sheet";
 import { OPS_STATUSES, OPS_STATUS_LABELS } from "@/lib/ops/types";
 import { createClient } from "@/lib/supabase/client";
 

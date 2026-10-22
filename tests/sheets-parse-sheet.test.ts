@@ -7,9 +7,10 @@ import {
   normalizeHeader,
   parseCsv,
   parseSheetFile,
+  readSheetTable,
   readXlsxTable,
   tableToSheet,
-} from "@/lib/ops/parse-sheet";
+} from "@/lib/sheets/parse-sheet";
 
 const fixturePath = resolve(import.meta.dirname, "fixtures/ops-requests-sample.csv");
 
@@ -118,5 +119,31 @@ describe("readXlsxTable", () => {
     const written = await workbook.xlsx.writeBuffer();
     const table = await readXlsxTable(new Uint8Array(written).slice().buffer);
     expect(table).toEqual([["Title"], ["Hello world"], ["2"]]);
+  });
+});
+
+describe("readSheetTable", () => {
+  it("returns raw CSV rows, keeping blank rows", async () => {
+    const file = new File(["REPORT_DATE,,\n22-10-2026,,\n,,\nPROMO,LAST_WEEK_COUNT\n"], "report.csv");
+    expect(await readSheetTable(file)).toEqual([
+      ["REPORT_DATE", "", ""],
+      ["22-10-2026", "", ""],
+      ["", "", ""],
+      ["PROMO", "LAST_WEEK_COUNT"],
+    ]);
+  });
+
+  it("returns raw .xlsx rows", async () => {
+    const buffer = await xlsxBuffer([["REPORT_DATE"], ["22-10-2026"]]);
+    expect(await readSheetTable(new File([buffer], "report.xlsx"))).toEqual([
+      ["REPORT_DATE"],
+      ["22-10-2026"],
+    ]);
+  });
+
+  it("rejects other file types", async () => {
+    await expect(readSheetTable(new File(["x"], "report.txt"))).rejects.toThrow(
+      "Upload a .csv or .xlsx file.",
+    );
   });
 });

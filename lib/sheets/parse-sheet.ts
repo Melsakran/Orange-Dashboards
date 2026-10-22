@@ -119,9 +119,13 @@ export async function readXlsxTable(buffer: ArrayBuffer): Promise<string[][]> {
   return table;
 }
 
-export async function parseSheetFile(file: File): Promise<RawSheet> {
+export async function readSheetTable(file: File): Promise<string[][]> {
   const name = file.name.toLowerCase();
-  if (name.endsWith(".csv")) return tableToSheet(parseCsv(await file.text()));
-  if (name.endsWith(".xlsx")) return tableToSheet(await readXlsxTable(await file.arrayBuffer()));
+  if (name.endsWith(".csv")) return parseCsv(await file.text());
+  if (name.endsWith(".xlsx")) return readXlsxTable(await file.arrayBuffer());
   throw new Error("Upload a .csv or .xlsx file.");
+}
+
+export async function parseSheetFile(file: File): Promise<RawSheet> {
+  return tableToSheet(await readSheetTable(file));
 }

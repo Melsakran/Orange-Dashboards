@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { normalizeRequests, parseSheetDate, REQUIRED_COLUMNS } from "@/lib/ops/normalize";
-import { parseCsv, tableToSheet } from "@/lib/ops/parse-sheet";
+import { parseCsv, tableToSheet } from "@/lib/sheets/parse-sheet";
 
 type Column = (typeof REQUIRED_COLUMNS)[number];
 
