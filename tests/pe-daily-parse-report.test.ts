@@ -23,7 +23,7 @@ describe("dates", () => {
     expect(parseReportDate(input)).toBe(expected);
   });
 
-  it.each(["31-02-2026", "2026-10-22", "22/10/2026", "", "22-10-26"])("rejects report date %s", (input) => {
+  it.each(["31-02-2026", "2026-10-22", "22/10/2026", "", "22-10-26", "05/10/2026"])("rejects report date %s", (input) => {
     expect(parseReportDate(input)).toBeNull();
   });
 
@@ -35,7 +35,7 @@ describe("dates", () => {
     expect(parseUpsellingDay(input)).toBe(expected);
   });
 
-  it.each(["32-Oct-26", "15-Okt-26", "15-10-26", ""])("rejects upselling day %s", (input) => {
+  it.each(["32-Oct-26", "15-Okt-26", "15-10-26", "", "10/21/2026"])("rejects upselling day %s", (input) => {
     expect(parseUpsellingDay(input)).toBeNull();
   });
 });
@@ -144,6 +144,31 @@ describe("parseReportTable", () => {
         { rowNumber: null, message: "The file has no REPORT_DATE." },
         { rowNumber: null, message: "The file has no SERVICE block." },
         { rowNumber: null, message: "The file has no DATE block." },
+      ],
+    });
+  });
+
+  it("reports a repeated REPORT_DATE, wrong header columns, and case-only duplicate services", () => {
+    const result = parseReportTable(table([
+      "REPORT_DATE",
+      "22-10-2026",
+      "REPORT_DATE",
+      "22-10-2026",
+      "PROMO,LAST_WEEK_COUNT,DAY_BEFORE_COUNT,YESTERDAY_COUNT",
+      "x,1,2,3",
+      "SERVICE,LAST_WEEK_COUNT,DAY_BEFORE_COUNT",
+      "OFFLINE_x,1,2,3",
+      "offline_x,1,2,3",
+      "DATE,COUNT",
+      "15-Oct-26,1",
+    ]));
+    expect(result).toEqual({
+      ok: false,
+      errors: [
+        { rowNumber: 3, message: "REPORT_DATE appears more than once." },
+        { rowNumber: 7, message: "The SERVICE header must be followed by LAST_WEEK_COUNT, DAY_BEFORE_COUNT, YESTERDAY_COUNT." },
+        { rowNumber: 9, message: 'Duplicate service "offline_x".' },
+        { rowNumber: 10, message: "The DATE header must be followed by UPSELLING_COUNT." },
       ],
     });
   });

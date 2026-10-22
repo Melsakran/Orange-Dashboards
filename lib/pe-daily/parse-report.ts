@@ -27,7 +27,7 @@ const BLOCK_COLUMNS: Record<BlockKind, string[]> = {
   date: ["UPSELLING_COUNT"],
 };
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-const SHEET_CELL_DATE = /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+\d{1,2}:\d{2})?$/;
+const SHEET_CELL_DATE = /^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+\d{1,2}:\d{2}$/;
 
 function isoDate(year: number, month: number, day: number): string | null {
   const date = new Date(Date.UTC(year, month - 1, day));
