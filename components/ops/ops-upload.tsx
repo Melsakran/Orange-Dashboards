@@ -9,8 +9,6 @@ import { parseSheetFile } from "@/lib/ops/parse-sheet";
 import { OPS_STATUSES, OPS_STATUS_LABELS } from "@/lib/ops/types";
 import { createClient } from "@/lib/supabase/client";
 
-const MAX_LISTED_ERRORS = 50;
-
 type UploadState =
   | { phase: "idle" }
   | { phase: "reading"; fileName: string }
@@ -47,16 +45,13 @@ function UploadReview({
         ) : null}
         {result.errors.length ? (
           <ul className="ops-upload-errors">
-            {result.errors.slice(0, MAX_LISTED_ERRORS).map((error) => (
+            {result.errors.map((error) => (
               <li key={error.rowNumber}>
                 Row {error.rowNumber}
                 {error.interactionId ? ` (${error.interactionId})` : ""}: {error.message}
               </li>
             ))}
           </ul>
-        ) : null}
-        {result.errors.length > MAX_LISTED_ERRORS ? (
-          <p>…and {result.errors.length - MAX_LISTED_ERRORS} more.</p>
         ) : null}
         <div className="form-actions">
           <button type="button" className="secondary-button" onClick={onCancel}>Close</button>
@@ -101,31 +96,45 @@ function UploadReview({
 export function OpsUpload({ onUploaded }: { onUploaded: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<UploadState>({ phase: "idle" });
-  const close = useCallback(() => setState({ phase: "idle" }), []);
+  const attemptRef = useRef(0);
+  const close = useCallback(
+    () =>
+      setState((current) =>
+        current.phase === "review" && current.saving ? current : { phase: "idle" },
+      ),
+    [],
+  );
 
   async function readFile(file: File) {
+    const attempt = ++attemptRef.current;
     setState({ phase: "reading", fileName: file.name });
+    let next: UploadState;
     try {
       const result = normalizeRequests(await parseSheetFile(file));
-      setState({ phase: "review", fileName: file.name, result, saving: false, saveError: null });
+      next = { phase: "review", fileName: file.name, result, saving: false, saveError: null };
     } catch (error) {
-      setState({
+      next = {
         phase: "failed",
         fileName: file.name,
         message: error instanceof Error ? error.message : "The file could not be read.",
-      });
+      };
     }
+    if (attempt !== attemptRef.current) return;
+    setState((current) => (current.phase === "reading" ? next : current));
   }
 
   async function save() {
     if (state.phase !== "review" || !state.result.ok || state.saving) return;
+    const attempt = attemptRef.current;
     const { fileName, result } = state;
     setState({ ...state, saving: true, saveError: null });
     try {
       await replaceOpsRequests(createClient(), fileName, result.requests);
+      if (attempt !== attemptRef.current) return;
       setState({ phase: "idle" });
       onUploaded();
     } catch (error) {
+      if (attempt !== attemptRef.current) return;
       setState({
         phase: "review",
         fileName,
