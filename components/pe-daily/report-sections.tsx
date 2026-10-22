@@ -145,11 +145,15 @@ export function ReportSections({
                   : `Showing all ${report.promos.length} promos`}
               </p>
             </div>
-            <PromoBarChart
-              label="Promos – H_DYNAMIC chart"
-              data={promoChartData(visible)}
-              series={PERIOD_SERIES}
-            />
+            {visible.length || !report.promos.length ? (
+              <PromoBarChart
+                label="Promos – H_DYNAMIC chart"
+                data={promoChartData(visible)}
+                series={PERIOD_SERIES}
+              />
+            ) : (
+              <p className="pe-daily-empty">All promos are over 1M. Turn off &quot;Hide promos over 1M&quot; to see them.</p>
+            )}
           </>
         ) : null}
       </SectionPanel>

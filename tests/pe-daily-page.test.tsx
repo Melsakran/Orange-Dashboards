@@ -95,6 +95,23 @@ describe("PeDailyPage", () => {
     expect(screen.getByText("Showing all 4 promos")).toBeInTheDocument();
   });
 
+  it("explains the empty H_DYNAMIC chart when every promo is over 1M", async () => {
+    const user = userEvent.setup();
+    const report = makeReport({
+      promos: [
+        { promo: "charges-platform", lastWeek: 1959859, dayBefore: 2041804, yesterday: 2024695 },
+        { promo: "revive", lastWeek: 7603289, dayBefore: 8471845, yesterday: 1000000 },
+      ],
+    });
+    render(<PeDailyPage data={makePageData({ report })} isAdmin={false} />);
+    expect(screen.getByText('All promos are over 1M. Turn off "Hide promos over 1M" to see them.')).toBeInTheDocument();
+    expect(screen.queryByRole("figure", { name: "Promos – H_DYNAMIC chart" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("checkbox", { name: "Hide promos over 1M" }));
+    expect(screen.getByRole("figure", { name: "Promos – H_DYNAMIC chart" })).toBeInTheDocument();
+    expect(screen.queryByText(/All promos are over 1M/)).not.toBeInTheDocument();
+  });
+
   it("navigates when another report date is chosen", async () => {
     const user = userEvent.setup();
     render(<PeDailyPage data={makePageData()} isAdmin={false} />);

@@ -148,6 +148,10 @@ export function ManualSection({ section, rows, reportDate, isAdmin, onSaved, chi
   const [editing, setEditing] = useState<{ reportDate: string; rows: DraftRow[] } | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saved, setSaved] = useState<{ reportDate: string; staleRows: ManualRow[]; rows: ManualRow[] } | null>(
+    null,
+  );
+  const awaitingRefresh = saved?.reportDate === reportDate && saved.staleRows === rows;
   const drafts = editing?.reportDate === reportDate ? editing.rows : null;
   const validation = drafts ? validateDraftRows(section, drafts) : null;
 
@@ -179,6 +183,7 @@ export function ManualSection({ section, rows, reportDate, isAdmin, onSaved, chi
     setSaveError(null);
     try {
       await savePeDailySection(createClient(), editing.reportDate, section.key, validation.rows);
+      setSaved({ reportDate: editing.reportDate, staleRows: rows, rows: validation.rows });
       setEditing(null);
       onSaved();
     } catch (error) {
@@ -188,7 +193,11 @@ export function ManualSection({ section, rows, reportDate, isAdmin, onSaved, chi
     }
   }
 
-  const actions = isAdmin && !drafts ? (
+  const actions = !isAdmin || drafts ? null : awaitingRefresh ? (
+    <button type="button" className="secondary-button" disabled>
+      Saving…
+    </button>
+  ) : (
     <button
       type="button"
       className="secondary-button"
@@ -197,7 +206,7 @@ export function ManualSection({ section, rows, reportDate, isAdmin, onSaved, chi
     >
       Edit
     </button>
-  ) : null;
+  );
 
   return (
     <SectionPanel id={`pe-daily-${section.key}`} title={section.title} actions={actions}>
@@ -218,7 +227,7 @@ export function ManualSection({ section, rows, reportDate, isAdmin, onSaved, chi
         <DataTable
           label={section.title}
           columns={manualColumns(section)}
-          rows={rows}
+          rows={awaitingRefresh ? saved.rows : rows}
           rowKey={(_row, index) => String(index)}
         />
       )}

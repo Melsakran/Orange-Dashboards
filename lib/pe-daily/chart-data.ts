@@ -61,5 +61,7 @@ export function smsChartData(rows: SmsCounts[]): ChartDatum[] {
 }
 
 export function upsellingChartData(days: UpsellingDay[]): ChartDatum[] {
-  return days.map((entry) => ({ category: formatDayLabel(entry.day), count: entry.count }));
+  return [...days]
+    .sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0))
+    .map((entry) => ({ category: formatDayLabel(entry.day), count: entry.count }));
 }

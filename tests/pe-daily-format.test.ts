@@ -113,6 +113,16 @@ describe("chart data", () => {
       { category: "21 Oct", count: 13625673 },
     ]);
   });
+
+  it("orders upselling days ascending regardless of file order", () => {
+    const days = [
+      { day: "2026-10-21", count: 3 },
+      { day: "2026-10-19", count: 1 },
+      { day: "2026-10-20", count: 2 },
+    ];
+    expect(upsellingChartData(days).map((datum) => datum.category)).toEqual(["19 Oct", "20 Oct", "21 Oct"]);
+    expect(days.map((entry) => entry.day)).toEqual(["2026-10-21", "2026-10-19", "2026-10-20"]);
+  });
 });
 
 describe("type guards", () => {

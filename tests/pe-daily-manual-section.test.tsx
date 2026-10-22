@@ -58,6 +58,34 @@ describe("ManualSection", () => {
     expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
   });
 
+  it("blocks editing after a save until fresh rows arrive", async () => {
+    const user = userEvent.setup();
+    const rows = [{ action: "Restart provisioning job", status: "Done" }];
+    const { rerender } = renderActions(true, rows);
+    await user.click(screen.getByRole("button", { name: "Edit Actions" }));
+    await user.clear(screen.getByLabelText("Status, row 1"));
+    await user.type(screen.getByLabelText("Status, row 1"), "Blocked");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await vi.waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
+
+    rerender(
+      <ManualSection section={SECTIONS.actions} rows={rows} reportDate="2026-10-22" isAdmin onSaved={onSaved} />,
+    );
+    expect(screen.queryByRole("button", { name: "Edit Actions" })).not.toBeInTheDocument();
+
+    rerender(
+      <ManualSection
+        section={SECTIONS.actions}
+        rows={[{ action: "Restart provisioning job", status: "Blocked" }]}
+        reportDate="2026-10-22"
+        isAdmin
+        onSaved={onSaved}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Edit Actions" })).toBeEnabled();
+    expect(screen.getByRole("table", { name: "Actions" })).toHaveTextContent("Blocked");
+  });
+
   it("shows field errors and blocks saving", async () => {
     const user = userEvent.setup();
     renderActions();
