@@ -6,9 +6,11 @@ import type { CommentInput } from "@/lib/data/comment-mutations";
 import { CommentSection } from "@/components/admin/comments/comment-section";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { ModalDialog } from "@/components/ui/modal-dialog";
+import { deliverySummary } from "@/lib/dashboard/card-format";
 
 interface ProjectDetailsModalProps {
   project: DashboardProject;
+  showDeliveryFields?: boolean;
   onClose: () => void;
   adminControls?: {
     onEditProject: () => void;
@@ -36,6 +38,7 @@ interface ProjectDetailsModalProps {
 
 export function ProjectDetailsModal({
   project,
+  showDeliveryFields = false,
   onClose,
   adminControls,
   commentControls,
@@ -165,7 +168,11 @@ export function ProjectDetailsModal({
                         </span>
                       ) : null}
                     </strong>
-                    <small>{subtask.statusName} · {subtask.progress}%</small>
+                    <small>
+                      {showDeliveryFields
+                        ? [subtask.statusName, deliverySummary(subtask)].filter(Boolean).join(" · ")
+                        : `${subtask.statusName} · ${subtask.progress}%`}
+                    </small>
                     {adminControls ? (
                       <button
                         type="button"

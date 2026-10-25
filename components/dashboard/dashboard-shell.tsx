@@ -177,6 +177,13 @@ function optimisticItem(
     ...(value.lastWeekStatus ? { lastWeekStatus: value.lastWeekStatus } : {}),
     ...(value.currentStatus ? { currentStatus: value.currentStatus } : {}),
     ...(value.releaseTag ? { releaseTag: value.releaseTag } : {}),
+    ...(value.readinessDate ? { readinessDate: value.readinessDate } : {}),
+    ...(value.teamEffortWd !== null && value.teamEffortWd !== undefined
+      ? { teamEffortWd: value.teamEffortWd }
+      : {}),
+    ...(value.timeToMarketWd !== null && value.timeToMarketWd !== undefined
+      ? { timeToMarketWd: value.timeToMarketWd }
+      : {}),
     ...(teamTracks?.length ? { teamTracks } : {}),
     sortOrder,
     updatedAt,
@@ -249,8 +256,17 @@ function EditorDialog({
             : "Description"
         }
         assigneeLabel={usesActionOwner(dashboard.slug) ? "Action Owner" : "Assignee"}
-        startDateLabel={dashboard.slug === "digital" ? "Start Date" : "Start date"}
-        endDateLabel={dashboard.slug === "digital" ? "RFT Date" : "End date"}
+        startDateLabel={
+          dashboard.slug === "digital" || isPeDeliveryWorkspace(dashboard.slug)
+            ? "Start Date"
+            : "Start date"
+        }
+        endDateLabel={
+          dashboard.slug === "digital"
+            ? "RFT Date"
+            : isPeDeliveryWorkspace(dashboard.slug) ? "Deployment Date" : "End date"
+        }
+        deliveryFields={isPeDeliveryWorkspace(dashboard.slug)}
         showProgress={!isDigitalStyleWorkspace(dashboard.slug)}
         showRelease={isDigitalStyleWorkspace(dashboard.slug)}
         useTeamTracks={usesTeamTracks(dashboard.slug)}
@@ -968,7 +984,7 @@ export function DashboardShell({
                       scheduleMode={
                         workspace.slug === "pe-ops" || workspace.slug === "datalake-ops"
                           ? "ops-health"
-                          : "dates"
+                          : isPeDeliveryWorkspace(workspace.slug) ? "delivery" : "dates"
                       }
                       startDateLabel={workspace.slug === "digital" ? "Start Date" : "Start"}
                       endDateLabel={workspace.slug === "digital" ? "RFT Date" : "Target"}
@@ -1034,6 +1050,7 @@ export function DashboardShell({
       ) : selectedProject ? (
         <ProjectDetailsModal
           project={selectedProject}
+          showDeliveryFields={isPeDeliveryWorkspace(workspace.slug)}
           onClose={closeProject}
           adminControls={canAdmin ? {
             onEditProject: () => setEditor({

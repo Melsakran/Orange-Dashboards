@@ -502,6 +502,62 @@ describe("DashboardShell", () => {
     expect(screen.queryByText("Project owner")).not.toBeInTheDocument();
   });
 
+  it("shows PE Development delivery fields on cards and subtasks", async () => {
+    const user = userEvent.setup();
+    const peDashboard = mapFixtureWorkspace({
+      slug: "pe-delivery",
+      name: "PE Development",
+      description: "Promo engine delivery priorities tracked manually by the team.",
+      projects: [],
+    });
+    const status = {
+      statusId: peDashboard.statuses[0].id,
+      statusName: peDashboard.statuses[0].name,
+      statusColor: peDashboard.statuses[0].color,
+    };
+    const project = {
+      ...dashboard.projects[0],
+      ...status,
+      title: "Promo engine CR",
+      startDate: "2026-03-01",
+      endDate: "2026-04-15",
+      readinessDate: "2026-04-20",
+      teamEffortWd: 8,
+      timeToMarketWd: 12.5,
+      subtasks: [
+        {
+          ...dashboard.projects[0],
+          ...status,
+          id: "pe-subtask",
+          title: "Pricing CR",
+          startDate: undefined,
+          endDate: undefined,
+          readinessDate: "2026-04-20",
+          teamEffortWd: 1,
+          timeToMarketWd: undefined,
+          sortOrder: 0,
+        },
+      ],
+    };
+    render(
+      <DashboardShell
+        initialDashboard={{ ...peDashboard, projects: [project] }}
+        source="fixture"
+      />,
+    );
+
+    const card = screen.getByRole("button", { name: "View Promo engine CR details" });
+    expect(within(card).getByText("Deployment Date").nextElementSibling).toHaveTextContent("Apr 15, 2026");
+    expect(within(card).getByText("Readiness Date").nextElementSibling).toHaveTextContent("Apr 20, 2026");
+    expect(within(card).getByText("Team Efforts").nextElementSibling).toHaveTextContent("8 WDs");
+    expect(within(card).getByText("Time to market efforts").nextElementSibling).toHaveTextContent("12.5 WDs");
+    expect(within(card).queryByText("Target")).not.toBeInTheDocument();
+
+    await user.click(card);
+    expect(screen.getByText(`${status.statusName} · Readiness Apr 20, 2026 · Team 1 WD`))
+      .toBeInTheDocument();
+  });
+
   it("shows Digital KPI statuses and Action Owner card layout", () => {
     const digitalDashboard = {
       ...mapFixtureWorkspace({

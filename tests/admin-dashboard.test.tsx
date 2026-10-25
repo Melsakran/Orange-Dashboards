@@ -183,6 +183,46 @@ describe("admin dashboard controls", () => {
     await vi.waitFor(() => expect(refetch).toHaveBeenCalled());
   });
 
+  it("edits PE Development delivery fields and submits them", async () => {
+    const user = userEvent.setup();
+    const peDashboard = {
+      ...dashboard,
+      slug: "pe-delivery",
+      name: "PE Development",
+    };
+    realtimeState.data = peDashboard;
+    render(<DashboardShell initialDashboard={peDashboard} source="database" isAdmin />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Existing project" }));
+    const dialog = screen.getByRole("dialog", { name: "Edit project" });
+    expect(within(dialog).getByLabelText("Start Date")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Deployment Date")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Readiness Date")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Team Efforts (WDs)")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Time to market efforts (WDs)")).toBeInTheDocument();
+    expect(within(dialog).queryByLabelText("End date")).not.toBeInTheDocument();
+
+    fireEvent.change(within(dialog).getByLabelText("Readiness Date"), {
+      target: { value: "2026-05-20" },
+    });
+    await user.type(within(dialog).getByLabelText("Team Efforts (WDs)"), "8");
+    await user.type(within(dialog).getByLabelText("Time to market efforts (WDs)"), "12.5");
+    await user.click(within(dialog).getByRole("button", { name: /save project/i }));
+
+    await vi.waitFor(() => expect(mutationMocks.updateWorkItem).toHaveBeenCalledTimes(1));
+    expect(mutationMocks.updateWorkItem).toHaveBeenCalledWith(
+      expect.anything(),
+      dashboard.id,
+      dashboard.projects[0].id,
+      dashboard.projects[0].updatedAt,
+      expect.objectContaining({
+        readinessDate: "2026-05-20",
+        teamEffortWd: 8,
+        timeToMarketWd: 12.5,
+      }),
+    );
+  });
+
   it("rolls a failed deletion back and offers retry", async () => {
     const user = userEvent.setup();
     mutationMocks.deleteWorkItem.mockRejectedValueOnce(new Error("network unavailable"));
