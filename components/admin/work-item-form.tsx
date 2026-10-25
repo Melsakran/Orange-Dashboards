@@ -2,6 +2,7 @@
 
 import { useRef, useState, type FormEvent } from "react";
 import type { ProjectPriority } from "@/data/workspaces";
+import { parseWorkingDays, WORKING_DAYS_ERROR } from "@/lib/dashboard/card-format";
 import type {
   DashboardStatus,
   DashboardWorkItem,
@@ -28,6 +29,9 @@ export interface WorkItemDraftFields {
   currentStatus: string;
   assignee: string;
   releaseTag: string;
+  readinessDate?: string;
+  teamEffortWd?: string;
+  timeToMarketWd?: string;
 }
 
 export interface WorkItemFormValue {
@@ -80,6 +84,7 @@ export function validateWorkItemDraft(
     requireProgress?: boolean;
     teamTracks?: TeamTrackDraft[];
     requireTeamTracks?: boolean;
+    deliveryFields?: boolean;
   } = {},
 ): WorkItemFormErrors {
   const requireProgress = options.requireProgress ?? true;
@@ -148,7 +153,23 @@ export function validateWorkItemDraft(
   }
   if (!options.requireTeamTracks && scheduleMode === "dates") {
     if (fields.startDate && fields.endDate && fields.endDate < fields.startDate) {
-      errors.endDate = "End date must be on or after the start date.";
+      errors.endDate = options.deliveryFields
+        ? "Deployment Date must be on or after the Start Date."
+        : "End date must be on or after the start date.";
+    }
+    if (options.deliveryFields) {
+      const readinessDate = fields.readinessDate ?? "";
+      if (readinessDate && fields.endDate && readinessDate < fields.endDate) {
+        errors.readinessDate = "Readiness Date must be on or after the Deployment Date.";
+      } else if (readinessDate && fields.startDate && readinessDate < fields.startDate) {
+        errors.readinessDate = "Readiness Date must be on or after the Start Date.";
+      }
+      if (parseWorkingDays(fields.teamEffortWd ?? "") === undefined) {
+        errors.teamEffortWd = WORKING_DAYS_ERROR;
+      }
+      if (parseWorkingDays(fields.timeToMarketWd ?? "") === undefined) {
+        errors.timeToMarketWd = WORKING_DAYS_ERROR;
+      }
     }
   } else if (scheduleMode === "ops-health") {
     if (fields.lastWeekStatus && !asOpsHealthStatus(fields.lastWeekStatus)) {
@@ -177,6 +198,9 @@ function initialFields(
     currentStatus: value?.currentStatus ?? "",
     assignee: value?.owner === "Unassigned" ? "" : value?.owner ?? "",
     releaseTag: value?.releaseTag ?? "",
+    readinessDate: value?.readinessDate ?? "",
+    teamEffortWd: value?.teamEffortWd?.toString() ?? "",
+    timeToMarketWd: value?.timeToMarketWd?.toString() ?? "",
   };
 }
 
@@ -215,6 +239,7 @@ interface WorkItemFormProps {
   showProgress?: boolean;
   showRelease?: boolean;
   useTeamTracks?: boolean;
+  deliveryFields?: boolean;
   onSubmit: (value: WorkItemFormValue) => Promise<void>;
   onCancel: () => void;
 }
@@ -232,6 +257,7 @@ export function WorkItemForm({
   showProgress = true,
   showRelease = false,
   useTeamTracks = false,
+  deliveryFields = false,
   onSubmit,
   onCancel,
 }: WorkItemFormProps) {
@@ -245,6 +271,7 @@ export function WorkItemForm({
   const submittingRef = useRef(false);
   const noun = kind === "project" ? "project" : "subtask";
   const action = initialValue ? `Save ${noun}` : `Create ${noun}`;
+  const showDeliveryFields = deliveryFields && !useTeamTracks && scheduleMode === "dates";
 
   function setField<Key extends keyof WorkItemDraftFields>(
     key: Key,
@@ -276,6 +303,7 @@ export function WorkItemForm({
       requireProgress: showProgress,
       requireTeamTracks: useTeamTracks,
       teamTracks: useTeamTracks ? teamTracks : undefined,
+      deliveryFields: showDeliveryFields,
     });
     setErrors(nextErrors);
     setSubmitError(null);
@@ -315,6 +343,13 @@ export function WorkItemForm({
         assignee: fields.assignee.trim() || null,
         releaseTag: showRelease ? fields.releaseTag.trim() || null : fields.releaseTag.trim() || null,
         ...(normalizedTracks ? { teamTracks: normalizedTracks } : {}),
+        ...(showDeliveryFields
+          ? {
+              readinessDate: fields.readinessDate || null,
+              teamEffortWd: parseWorkingDays(fields.teamEffortWd ?? "") ?? null,
+              timeToMarketWd: parseWorkingDays(fields.timeToMarketWd ?? "") ?? null,
+            }
+          : {}),
       });
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Unable to save this work item.");
@@ -573,29 +608,87 @@ export function WorkItemForm({
           </div>
         </div>
       ) : (
-        <div className="form-row">
-          <div className="form-field">
-            <label htmlFor="work-item-start">{startDateLabel}</label>
-            <input
-              id="work-item-start"
-              type="date"
-              value={fields.startDate}
-              onChange={(event) => setField("startDate", event.target.value)}
-            />
+        <>
+          <div className="form-row">
+            <div className="form-field">
+              <label htmlFor="work-item-start">{startDateLabel}</label>
+              <input
+                id="work-item-start"
+                type="date"
+                value={fields.startDate}
+                onChange={(event) => setField("startDate", event.target.value)}
+              />
+            </div>
+            <div className="form-field">
+              <label htmlFor="work-item-end">{endDateLabel}</label>
+              <input
+                id="work-item-end"
+                type="date"
+                value={fields.endDate}
+                onChange={(event) => setField("endDate", event.target.value)}
+                aria-invalid={Boolean(errors.endDate)}
+                aria-describedby={errors.endDate ? "work-item-end-error" : undefined}
+              />
+              {errors.endDate ? <p className="form-error" id="work-item-end-error">{errors.endDate}</p> : null}
+            </div>
           </div>
-          <div className="form-field">
-            <label htmlFor="work-item-end">{endDateLabel}</label>
-            <input
-              id="work-item-end"
-              type="date"
-              value={fields.endDate}
-              onChange={(event) => setField("endDate", event.target.value)}
-              aria-invalid={Boolean(errors.endDate)}
-              aria-describedby={errors.endDate ? "work-item-end-error" : undefined}
-            />
-            {errors.endDate ? <p className="form-error" id="work-item-end-error">{errors.endDate}</p> : null}
-          </div>
-        </div>
+          {showDeliveryFields ? (
+            <>
+              <div className="form-field">
+                <label htmlFor="work-item-readiness">Readiness Date</label>
+                <input
+                  id="work-item-readiness"
+                  type="date"
+                  value={fields.readinessDate ?? ""}
+                  onChange={(event) => setField("readinessDate", event.target.value)}
+                  aria-invalid={Boolean(errors.readinessDate)}
+                  aria-describedby={errors.readinessDate ? "work-item-readiness-error" : undefined}
+                />
+                {errors.readinessDate ? (
+                  <p className="form-error" id="work-item-readiness-error">{errors.readinessDate}</p>
+                ) : null}
+              </div>
+              <div className="form-row">
+                <div className="form-field">
+                  <label htmlFor="work-item-team-effort">Team Efforts (WDs)</label>
+                  <input
+                    id="work-item-team-effort"
+                    type="number"
+                    min="0"
+                    max="9999.9"
+                    step="0.1"
+                    inputMode="decimal"
+                    value={fields.teamEffortWd ?? ""}
+                    onChange={(event) => setField("teamEffortWd", event.target.value)}
+                    aria-invalid={Boolean(errors.teamEffortWd)}
+                    aria-describedby={errors.teamEffortWd ? "work-item-team-effort-error" : undefined}
+                  />
+                  {errors.teamEffortWd ? (
+                    <p className="form-error" id="work-item-team-effort-error">{errors.teamEffortWd}</p>
+                  ) : null}
+                </div>
+                <div className="form-field">
+                  <label htmlFor="work-item-time-to-market">Time to market efforts (WDs)</label>
+                  <input
+                    id="work-item-time-to-market"
+                    type="number"
+                    min="0"
+                    max="9999.9"
+                    step="0.1"
+                    inputMode="decimal"
+                    value={fields.timeToMarketWd ?? ""}
+                    onChange={(event) => setField("timeToMarketWd", event.target.value)}
+                    aria-invalid={Boolean(errors.timeToMarketWd)}
+                    aria-describedby={errors.timeToMarketWd ? "work-item-time-to-market-error" : undefined}
+                  />
+                  {errors.timeToMarketWd ? (
+                    <p className="form-error" id="work-item-time-to-market-error">{errors.timeToMarketWd}</p>
+                  ) : null}
+                </div>
+              </div>
+            </>
+          ) : null}
+        </>
       )}
 
       <div className="form-field">

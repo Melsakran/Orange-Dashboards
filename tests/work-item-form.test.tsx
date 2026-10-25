@@ -96,6 +96,59 @@ describe("validateWorkItemDraft", () => {
     expect(errors.teamTrackFields?.a?.endDate).toMatch(/on or after/i);
     expect(errors.teamTrackFields?.b?.teamName).toMatch(/unique/i);
   });
+
+  describe("delivery fields", () => {
+    const delivery = { deliveryFields: true };
+
+    it("names Deployment Date when it is before the Start Date", () => {
+      expect(validateWorkItemDraft({
+        ...emptyDraft,
+        startDate: "2026-07-20",
+        endDate: "2026-07-19",
+      }, "dates", delivery).endDate).toBe("Deployment Date must be on or after the Start Date.");
+    });
+
+    it("rejects a Readiness Date before the Deployment Date", () => {
+      expect(validateWorkItemDraft({
+        ...emptyDraft,
+        startDate: "2026-07-01",
+        endDate: "2026-07-20",
+        readinessDate: "2026-07-19",
+      }, "dates", delivery).readinessDate)
+        .toBe("Readiness Date must be on or after the Deployment Date.");
+    });
+
+    it("rejects a Readiness Date before the Start Date when Deployment is empty", () => {
+      expect(validateWorkItemDraft({
+        ...emptyDraft,
+        startDate: "2026-07-01",
+        readinessDate: "2026-06-30",
+      }, "dates", delivery).readinessDate)
+        .toBe("Readiness Date must be on or after the Start Date.");
+    });
+
+    it.each(["1.25", "-1", "10000", "abc"])("rejects effort %j", (value) => {
+      const errors = validateWorkItemDraft({
+        ...emptyDraft,
+        teamEffortWd: value,
+        timeToMarketWd: value,
+      }, "dates", delivery);
+      const message = "Enter working days as a number from 0 to 9999.9 with at most one decimal.";
+      expect(errors.teamEffortWd).toBe(message);
+      expect(errors.timeToMarketWd).toBe(message);
+    });
+
+    it("accepts valid delivery values", () => {
+      expect(validateWorkItemDraft({
+        ...emptyDraft,
+        startDate: "2026-07-01",
+        endDate: "2026-07-10",
+        readinessDate: "2026-07-10",
+        teamEffortWd: "2.5",
+        timeToMarketWd: "",
+      }, "dates", delivery)).toEqual({});
+    });
+  });
 });
 
 describe("WorkItemForm", () => {
@@ -172,5 +225,95 @@ describe("WorkItemForm", () => {
     expect(screen.getByLabelText("Title")).toHaveAttribute("maxlength", "200");
     expect(screen.getByLabelText("Description")).toHaveAttribute("maxlength", "10000");
     expect(screen.getByLabelText("Assignee")).toHaveAttribute("maxlength", "200");
+  });
+
+  it("submits PE Development delivery fields", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <WorkItemForm
+        kind="subtask"
+        statuses={statuses}
+        startDateLabel="Start Date"
+        endDateLabel="Deployment Date"
+        showProgress={false}
+        deliveryFields
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    await user.type(screen.getByLabelText("Title"), "CR 12");
+    await user.type(screen.getByLabelText("Start Date"), "2026-07-01");
+    await user.type(screen.getByLabelText("Deployment Date"), "2026-07-10");
+    await user.type(screen.getByLabelText("Readiness Date"), "2026-07-15");
+    await user.type(screen.getByLabelText("Team Efforts (WDs)"), "2.5");
+    await user.type(screen.getByLabelText("Time to market efforts (WDs)"), "12");
+    await user.click(screen.getByRole("button", { name: "Create subtask" }));
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      startDate: "2026-07-01",
+      endDate: "2026-07-10",
+      readinessDate: "2026-07-15",
+      teamEffortWd: 2.5,
+      timeToMarketWd: 12,
+    }));
+  });
+
+  it("prefills delivery fields and clears empty efforts to null", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <WorkItemForm
+        kind="project"
+        statuses={statuses}
+        initialValue={{
+          id: "item-1",
+          title: "Promo",
+          description: "",
+          status: "in-progress",
+          statusId: "status-a",
+          statusName: "In Progress",
+          statusColor: "#123456",
+          reportingCategory: "active",
+          owner: "Unassigned",
+          priority: "medium",
+          progress: 0,
+          readinessDate: "2026-07-15",
+          teamEffortWd: 8,
+          sortOrder: 0,
+          updatedAt: "",
+          syncSource: "local",
+          comments: [],
+        }}
+        showProgress={false}
+        deliveryFields
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Readiness Date")).toHaveValue("2026-07-15");
+    expect(screen.getByLabelText("Team Efforts (WDs)")).toHaveValue(8);
+    await user.clear(screen.getByLabelText("Team Efforts (WDs)"));
+    await user.click(screen.getByRole("button", { name: "Save project" }));
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      readinessDate: "2026-07-15",
+      teamEffortWd: null,
+      timeToMarketWd: null,
+    }));
+  });
+
+  it("leaves delivery fields out of other dashboards' saves", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<WorkItemForm kind="project" statuses={statuses} onSubmit={onSubmit} onCancel={vi.fn()} />);
+
+    expect(screen.queryByLabelText("Readiness Date")).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText("Title"), "Other");
+    await user.click(screen.getByRole("button", { name: "Create project" }));
+    expect(onSubmit.mock.calls[0][0]).not.toHaveProperty("readinessDate");
+    expect(onSubmit.mock.calls[0][0]).not.toHaveProperty("teamEffortWd");
   });
 });
