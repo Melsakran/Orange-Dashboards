@@ -45,6 +45,20 @@ describe("work item payloads", () => {
     expect(buildWorkItemPayload("workspace-a", "project-a", draft, 0, "subtask-a").parent_id)
       .toBe("project-a");
   });
+
+  it("sends delivery fields only when the form provides them", () => {
+    expect(buildWorkItemPayload("workspace-a", null, draft, 0)).not.toHaveProperty("readiness_date");
+    expect(buildWorkItemPayload("workspace-a", null, {
+      ...draft,
+      readinessDate: "2026-08-05",
+      teamEffortWd: 2.5,
+      timeToMarketWd: null,
+    }, 0)).toMatchObject({
+      readiness_date: "2026-08-05",
+      team_effort_wd: 2.5,
+      time_to_market_wd: null,
+    });
+  });
 });
 
 describe("work item mutations", () => {
@@ -114,6 +128,39 @@ describe("work item mutations", () => {
       code: "WORK_ITEM_CONFLICT",
       retryable: false,
     });
+  });
+
+  it("sends delivery fields in the update payload only when provided", async () => {
+    const updated = { id: "item-a", updated_at: "2026-07-15T10:00:00.000Z" };
+    const updateSingle = vi.fn().mockResolvedValue({ data: updated, error: null });
+    const update = vi.fn(() => ({
+      eq: () => ({
+        eq: () => ({
+          eq: () => ({ select: () => ({ maybeSingle: updateSingle }) }),
+        }),
+      }),
+    }));
+    const client = {
+      from: vi.fn(() => ({ update })),
+    } as unknown as SupabaseClient<Database>;
+
+    await updateWorkItem(client, "workspace-a", "item-a", updated.updated_at, {
+      ...draft,
+      readinessDate: "2026-08-05",
+      teamEffortWd: 1,
+      timeToMarketWd: 3,
+    });
+    expect(update).toHaveBeenLastCalledWith(expect.objectContaining({
+      readiness_date: "2026-08-05",
+      team_effort_wd: 1,
+      time_to_market_wd: 3,
+    }));
+
+    await updateWorkItem(client, "workspace-a", "item-a", updated.updated_at, draft);
+    const plainPayload = (update.mock.calls.at(-1) as unknown as [Record<string, unknown>])[0];
+    expect(plainPayload).not.toHaveProperty("readiness_date");
+    expect(plainPayload).not.toHaveProperty("team_effort_wd");
+    expect(plainPayload).not.toHaveProperty("time_to_market_wd");
   });
 
   it("sends the complete ordered sibling list to the reorder RPC", async () => {

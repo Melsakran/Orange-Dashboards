@@ -42,6 +42,9 @@ export interface WorkItemFormValue {
   currentStatus: OpsHealthStatus | null;
   assignee: string | null;
   releaseTag: string | null;
+  readinessDate?: string | null;
+  teamEffortWd?: number | null;
+  timeToMarketWd?: number | null;
   teamTracks?: Array<{
     teamName: string;
     statusId: string;

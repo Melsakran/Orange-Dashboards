@@ -23,6 +23,14 @@ function conflictFailure(): never {
   );
 }
 
+function deliveryPayload(value: WorkItemFormValue) {
+  return {
+    ...(value.readinessDate !== undefined ? { readiness_date: value.readinessDate } : {}),
+    ...(value.teamEffortWd !== undefined ? { team_effort_wd: value.teamEffortWd } : {}),
+    ...(value.timeToMarketWd !== undefined ? { time_to_market_wd: value.timeToMarketWd } : {}),
+  };
+}
+
 export function buildWorkItemPayload(
   workspaceId: string,
   parentId: string | null,
@@ -45,6 +53,7 @@ export function buildWorkItemPayload(
     current_status: value.currentStatus,
     assignee: value.assignee,
     release_tag: value.releaseTag,
+    ...deliveryPayload(value),
     sort_order: sortOrder,
   };
 }
@@ -62,6 +71,7 @@ function updatePayload(value: WorkItemFormValue): TablesUpdate<"work_items"> {
     current_status: value.currentStatus,
     assignee: value.assignee,
     release_tag: value.releaseTag,
+    ...deliveryPayload(value),
   };
 }
 

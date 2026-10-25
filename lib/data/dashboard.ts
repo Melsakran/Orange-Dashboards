@@ -65,6 +65,9 @@ export interface DashboardWorkItem {
   lastWeekStatus?: OpsHealthStatus;
   currentStatus?: OpsHealthStatus;
   releaseTag?: string;
+  readinessDate?: string;
+  teamEffortWd?: number;
+  timeToMarketWd?: number;
   teamTracks?: DashboardTeamTrack[];
   sortOrder: number;
   updatedAt: string;
@@ -276,6 +279,13 @@ export function mapDashboardRows(
         ? { currentStatus: asOpsHealthStatus(item.current_status) }
         : {}),
       ...(item.release_tag ? { releaseTag: item.release_tag } : {}),
+      ...(item.readiness_date ? { readinessDate: item.readiness_date } : {}),
+      ...(item.team_effort_wd !== null && item.team_effort_wd !== undefined
+        ? { teamEffortWd: Number(item.team_effort_wd) }
+        : {}),
+      ...(item.time_to_market_wd !== null && item.time_to_market_wd !== undefined
+        ? { timeToMarketWd: Number(item.time_to_market_wd) }
+        : {}),
       ...(teamTracks?.length ? { teamTracks } : {}),
       sortOrder: item.sort_order,
       updatedAt: item.updated_at,

@@ -196,6 +196,49 @@ describe("dashboard data mapping", () => {
       completed: [],
     });
   });
+
+  it("maps PE Development delivery fields", () => {
+    const dashboard = mapDashboardRows({
+      ...rows,
+      workItems: rows.workItems.map((item) =>
+        item.id === "project"
+          ? {
+              ...item,
+              end_date: "2026-02-01",
+              readiness_date: "2026-02-10",
+              team_effort_wd: 2.5,
+              time_to_market_wd: 12,
+            }
+          : item),
+    });
+
+    expect(dashboard.projects[0]).toMatchObject({
+      endDate: "2026-02-01",
+      readinessDate: "2026-02-10",
+      teamEffortWd: 2.5,
+      timeToMarketWd: 12,
+    });
+    expect(dashboard.projects[0].subtasks[0]).not.toHaveProperty("readinessDate");
+    expect(dashboard.projects[0].subtasks[0]).not.toHaveProperty("teamEffortWd");
+    expect(dashboard.projects[0].subtasks[0]).not.toHaveProperty("timeToMarketWd");
+  });
+
+  it("maps a zero effort and numeric strings from PostgREST", () => {
+    const dashboard = mapDashboardRows({
+      ...rows,
+      workItems: rows.workItems.map((item) =>
+        item.id === "project"
+          ? {
+              ...item,
+              team_effort_wd: 0,
+              time_to_market_wd: "3.5" as unknown as number,
+            }
+          : item),
+    });
+
+    expect(dashboard.projects[0].teamEffortWd).toBe(0);
+    expect(dashboard.projects[0].timeToMarketWd).toBe(3.5);
+  });
 });
 
 describe("safe return paths", () => {
