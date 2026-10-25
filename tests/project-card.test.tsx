@@ -221,3 +221,43 @@ describe("ProjectCard Dev Ops options", () => {
     expect(screen.queryByText("Last Week Status")).not.toBeInTheDocument();
   });
 });
+
+describe("ProjectCard PE Development delivery fields", () => {
+  it("shows the five delivery fields instead of Target", () => {
+    render(
+      <ProjectCard
+        project={makeProject({
+          startDate: "2026-03-01",
+          endDate: "2026-04-15",
+          readinessDate: "2026-04-20",
+          teamEffortWd: 8,
+          timeToMarketWd: 12.5,
+        })}
+        onOpen={vi.fn()}
+        scheduleMode="delivery"
+      />,
+    );
+
+    const field = (label: string) => screen.getByText(label).nextElementSibling;
+    expect(field("Start Date")).toHaveTextContent("Mar 1, 2026");
+    expect(field("Deployment Date")).toHaveTextContent("Apr 15, 2026");
+    expect(field("Readiness Date")).toHaveTextContent("Apr 20, 2026");
+    expect(field("Team Efforts")).toHaveTextContent("8 WDs");
+    expect(field("Time to market efforts")).toHaveTextContent("12.5 WDs");
+    expect(screen.queryByText("Target")).not.toBeInTheDocument();
+  });
+
+  it("shows placeholders when delivery fields are empty", () => {
+    render(
+      <ProjectCard
+        project={makeProject({ startDate: undefined, endDate: undefined })}
+        onOpen={vi.fn()}
+        scheduleMode="delivery"
+      />,
+    );
+
+    expect(screen.getByText("Readiness Date").nextElementSibling).toHaveTextContent("Not scheduled");
+    expect(screen.getByText("Team Efforts").nextElementSibling).toHaveTextContent("Not set");
+    expect(screen.getByText("Time to market efforts").nextElementSibling).toHaveTextContent("Not set");
+  });
+});

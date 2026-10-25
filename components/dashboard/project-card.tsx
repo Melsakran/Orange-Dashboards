@@ -5,6 +5,7 @@ import type {
   OpsHealthStatus,
 } from "@/lib/data/dashboard";
 import { ProgressBar } from "@/components/ui/progress-bar";
+import { formatCardDate, formatWorkingDays } from "@/lib/dashboard/card-format";
 
 interface ProjectCardProps {
   project: DashboardProject;
@@ -19,7 +20,7 @@ interface ProjectCardProps {
   showOverdueTag?: boolean;
   showChildHierarchy?: boolean;
   showReleaseTag?: boolean;
-  scheduleMode?: "dates" | "ops-health";
+  scheduleMode?: "dates" | "ops-health" | "delivery";
   startDateLabel?: string;
   endDateLabel?: string;
   selected?: boolean;
@@ -37,19 +38,6 @@ interface ProjectCardProps {
     onEdit: () => void;
     onDelete: () => void;
   };
-}
-
-const dateFormatter = new Intl.DateTimeFormat("en", {
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-  timeZone: "UTC",
-});
-
-function formatDate(date?: string) {
-  if (!date) return "Not scheduled";
-  const parsed = new Date(`${date}T00:00:00Z`);
-  return Number.isNaN(parsed.getTime()) ? "Not scheduled" : dateFormatter.format(parsed);
 }
 
 function isPastTargetDate(endDate?: string) {
@@ -264,11 +252,11 @@ export function ProjectCard({
                   <dl className="project-dates project-dates-compact">
                     <div>
                       <dt>{`${track.teamName} Start Date`}</dt>
-                      <dd>{formatDate(track.startDate)}</dd>
+                      <dd>{formatCardDate(track.startDate)}</dd>
                     </div>
                     <div>
                       <dt>{`${track.teamName} End Date`}</dt>
-                      <dd>{formatDate(track.endDate)}</dd>
+                      <dd>{formatCardDate(track.endDate)}</dd>
                     </div>
                   </dl>
                 ) : null}
@@ -294,16 +282,39 @@ export function ProjectCard({
                 </dd>
               </div>
             </>
+          ) : scheduleMode === "delivery" ? (
+            <>
+              <div>
+                <dt>Start Date</dt>
+                <dd>{formatCardDate(project.startDate)}</dd>
+              </div>
+              <div>
+                <dt>Deployment Date</dt>
+                <dd>{formatCardDate(project.endDate)}</dd>
+              </div>
+              <div>
+                <dt>Readiness Date</dt>
+                <dd>{formatCardDate(project.readinessDate)}</dd>
+              </div>
+              <div>
+                <dt>Team Efforts</dt>
+                <dd>{formatWorkingDays(project.teamEffortWd)}</dd>
+              </div>
+              <div>
+                <dt>Time to market efforts</dt>
+                <dd>{formatWorkingDays(project.timeToMarketWd)}</dd>
+              </div>
+            </>
           ) : (
             <>
               <div>
                 <dt>{startDateLabel}</dt>
-                <dd>{formatDate(project.startDate)}</dd>
+                <dd>{formatCardDate(project.startDate)}</dd>
               </div>
               <div>
                 <dt>{endDateLabel}</dt>
                 <dd className={overdue ? "project-date-overdue" : undefined}>
-                  {formatDate(project.endDate)}
+                  {formatCardDate(project.endDate)}
                 </dd>
               </div>
             </>
