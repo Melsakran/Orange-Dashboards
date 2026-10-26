@@ -2614,52 +2614,28 @@ footer {
   border-radius: 3px;
 }
 
-.ops-legend-assigned,
-.ops-week-bar-assigned {
+.ops-legend-assigned {
   background: var(--orange);
 }
 
-.ops-legend-closed,
-.ops-week-bar-closed {
+.ops-legend-closed {
   background: #237b4b;
 }
 
-.ops-weeks {
-  display: flex;
-  align-items: flex-end;
-  gap: 10px;
-  min-height: 180px;
-  margin: 0;
-  padding: 0;
+.ops-timeline-scroll {
   overflow-x: auto;
-  list-style: none;
 }
 
-.ops-weeks li {
-  display: grid;
-  flex: 0 0 48px;
-  justify-items: center;
-  gap: 6px;
-}
-
-.ops-week-bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 3px;
-  height: 150px;
-}
-
-.ops-week-bar {
-  display: block;
-  width: 14px;
-  min-height: 2px;
-  border-radius: 4px 4px 0 0;
-}
-
-.ops-week-label {
-  color: var(--muted);
-  font-size: 11px;
+.ops-weeks-summary {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
   white-space: nowrap;
+  border: 0;
 }
 
 .ops-filters {
