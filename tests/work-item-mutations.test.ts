@@ -59,6 +59,12 @@ describe("work item payloads", () => {
       time_to_market_wd: null,
     });
   });
+
+  it("sends the project tier only when the form provides it", () => {
+    expect(buildWorkItemPayload("workspace-a", null, draft, 0)).not.toHaveProperty("project_tier");
+    expect(buildWorkItemPayload("workspace-a", null, { ...draft, projectTier: "critical" }, 0))
+      .toMatchObject({ project_tier: "critical" });
+  });
 });
 
 describe("work item mutations", () => {
@@ -149,11 +155,13 @@ describe("work item mutations", () => {
       readinessDate: "2026-08-05",
       teamEffortWd: 1,
       timeToMarketWd: 3,
+      projectTier: "standard",
     });
     expect(update).toHaveBeenLastCalledWith(expect.objectContaining({
       readiness_date: "2026-08-05",
       team_effort_wd: 1,
       time_to_market_wd: 3,
+      project_tier: "standard",
     }));
 
     await updateWorkItem(client, "workspace-a", "item-a", updated.updated_at, draft);
@@ -161,6 +169,7 @@ describe("work item mutations", () => {
     expect(plainPayload).not.toHaveProperty("readiness_date");
     expect(plainPayload).not.toHaveProperty("team_effort_wd");
     expect(plainPayload).not.toHaveProperty("time_to_market_wd");
+    expect(plainPayload).not.toHaveProperty("project_tier");
   });
 
   it("sends the complete ordered sibling list to the reorder RPC", async () => {

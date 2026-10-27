@@ -3,6 +3,7 @@ import {
   aggregateKpis,
   groupStatuses,
   mapDashboardRows,
+  projectTierOf,
   type DashboardRows,
 } from "@/lib/data/dashboard";
 import {
@@ -241,6 +242,19 @@ describe("dashboard data mapping", () => {
 
     expect(dashboard.projects[0].teamEffortWd).toBe(0);
     expect(dashboard.projects[0].timeToMarketWd).toBe(3.5);
+  });
+
+  it("maps the critical project tag and treats everything else as standard", () => {
+    const dashboard = mapDashboardRows({
+      ...rows,
+      workItems: rows.workItems.map((item) =>
+        item.id === "project" ? { ...item, project_tier: "critical" } : item),
+    });
+
+    expect(dashboard.projects[0].projectTier).toBe("critical");
+    expect(projectTierOf(dashboard.projects[0])).toBe("critical");
+    expect(dashboard.projects[0].subtasks[0]).not.toHaveProperty("projectTier");
+    expect(projectTierOf(dashboard.projects[0].subtasks[0])).toBe("standard");
   });
 });
 

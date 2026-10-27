@@ -28,6 +28,7 @@ function deliveryPayload(value: WorkItemFormValue) {
     ...(value.readinessDate !== undefined ? { readiness_date: value.readinessDate } : {}),
     ...(value.teamEffortWd !== undefined ? { team_effort_wd: value.teamEffortWd } : {}),
     ...(value.timeToMarketWd !== undefined ? { time_to_market_wd: value.timeToMarketWd } : {}),
+    ...(value.projectTier !== undefined ? { project_tier: value.projectTier } : {}),
   };
 }
 

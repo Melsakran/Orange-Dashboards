@@ -3,10 +3,12 @@
 import { useRef, useState, type FormEvent } from "react";
 import type { ProjectPriority } from "@/data/workspaces";
 import { parseWorkingDays, WORKING_DAYS_ERROR } from "@/lib/dashboard/card-format";
-import type {
-  DashboardStatus,
-  DashboardWorkItem,
-  OpsHealthStatus,
+import {
+  projectTierOf,
+  type DashboardStatus,
+  type DashboardWorkItem,
+  type OpsHealthStatus,
+  type ProjectTier,
 } from "@/lib/data/dashboard";
 
 export interface TeamTrackDraft {
@@ -32,6 +34,7 @@ export interface WorkItemDraftFields {
   readinessDate?: string;
   teamEffortWd?: string;
   timeToMarketWd?: string;
+  projectTier?: ProjectTier;
 }
 
 export interface WorkItemFormValue {
@@ -49,6 +52,7 @@ export interface WorkItemFormValue {
   readinessDate?: string | null;
   teamEffortWd?: number | null;
   timeToMarketWd?: number | null;
+  projectTier?: ProjectTier;
   teamTracks?: Array<{
     teamName: string;
     statusId: string;
@@ -201,6 +205,7 @@ function initialFields(
     readinessDate: value?.readinessDate ?? "",
     teamEffortWd: value?.teamEffortWd?.toString() ?? "",
     timeToMarketWd: value?.timeToMarketWd?.toString() ?? "",
+    projectTier: projectTierOf(value ?? {}),
   };
 }
 
@@ -240,6 +245,7 @@ interface WorkItemFormProps {
   showRelease?: boolean;
   useTeamTracks?: boolean;
   deliveryFields?: boolean;
+  showProjectTier?: boolean;
   onSubmit: (value: WorkItemFormValue) => Promise<void>;
   onCancel: () => void;
 }
@@ -258,6 +264,7 @@ export function WorkItemForm({
   showRelease = false,
   useTeamTracks = false,
   deliveryFields = false,
+  showProjectTier = false,
   onSubmit,
   onCancel,
 }: WorkItemFormProps) {
@@ -350,6 +357,7 @@ export function WorkItemForm({
               timeToMarketWd: parseWorkingDays(fields.timeToMarketWd ?? "") ?? null,
             }
           : {}),
+        ...(showProjectTier ? { projectTier: fields.projectTier ?? "standard" } : {}),
       });
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Unable to save this work item.");
@@ -438,6 +446,21 @@ export function WorkItemForm({
           </select>
         </div>
       )}
+
+      {showProjectTier ? (
+        <div className="form-field">
+          <label htmlFor="work-item-project-tier">Project type</label>
+          <select
+            id="work-item-project-tier"
+            value={fields.projectTier ?? "standard"}
+            onChange={(event) =>
+              setField("projectTier", event.target.value === "critical" ? "critical" : "standard")}
+          >
+            <option value="standard">Standard project</option>
+            <option value="critical">Critical project</option>
+          </select>
+        </div>
+      ) : null}
 
       {showProgress ? (
         <div className="form-field">

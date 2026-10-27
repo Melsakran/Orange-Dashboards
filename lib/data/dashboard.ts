@@ -47,6 +47,8 @@ export interface DashboardComment {
 
 export type OpsHealthStatus = "Clear" | "Delayed";
 
+export type ProjectTier = "standard" | "critical";
+
 export interface DashboardWorkItem {
   id: string;
   title: string;
@@ -68,6 +70,7 @@ export interface DashboardWorkItem {
   readinessDate?: string;
   teamEffortWd?: number;
   timeToMarketWd?: number;
+  projectTier?: ProjectTier;
   teamTracks?: DashboardTeamTrack[];
   sortOrder: number;
   updatedAt: string;
@@ -85,6 +88,10 @@ export function projectMatchesStatusFilter(
     return project.teamTracks.some((track) => track.statusId === statusId);
   }
   return project.statusId === statusId;
+}
+
+export function projectTierOf(item: Pick<DashboardWorkItem, "projectTier">): ProjectTier {
+  return item.projectTier === "critical" ? "critical" : "standard";
 }
 
 export interface DashboardProject extends DashboardWorkItem {
@@ -286,6 +293,7 @@ export function mapDashboardRows(
       ...(item.time_to_market_wd !== null && item.time_to_market_wd !== undefined
         ? { timeToMarketWd: Number(item.time_to_market_wd) }
         : {}),
+      ...(item.project_tier === "critical" ? { projectTier: "critical" as const } : {}),
       ...(teamTracks?.length ? { teamTracks } : {}),
       sortOrder: item.sort_order,
       updatedAt: item.updated_at,

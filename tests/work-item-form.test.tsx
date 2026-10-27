@@ -316,4 +316,75 @@ describe("WorkItemForm", () => {
     expect(onSubmit.mock.calls[0][0]).not.toHaveProperty("readinessDate");
     expect(onSubmit.mock.calls[0][0]).not.toHaveProperty("teamEffortWd");
   });
+
+  it("submits the project type when the field is shown", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <WorkItemForm
+        kind="project"
+        statuses={statuses}
+        showProgress={false}
+        showProjectTier
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Project type")).toHaveValue("standard");
+    await user.type(screen.getByLabelText("Title"), "Promo");
+    await user.selectOptions(screen.getByLabelText("Project type"), "Critical project");
+    await user.click(screen.getByRole("button", { name: "Create project" }));
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ projectTier: "critical" }));
+  });
+
+  it("prefills a critical project and can switch it back to standard", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <WorkItemForm
+        kind="project"
+        statuses={statuses}
+        initialValue={{
+          id: "item-1",
+          title: "Promo",
+          description: "",
+          status: "in-progress",
+          statusId: "status-a",
+          statusName: "In Progress",
+          statusColor: "#123456",
+          reportingCategory: "active",
+          owner: "Unassigned",
+          priority: "medium",
+          progress: 0,
+          projectTier: "critical",
+          sortOrder: 0,
+          updatedAt: "",
+          syncSource: "local",
+          comments: [],
+        }}
+        showProgress={false}
+        showProjectTier
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Project type")).toHaveValue("critical");
+    await user.selectOptions(screen.getByLabelText("Project type"), "Standard project");
+    await user.click(screen.getByRole("button", { name: "Save project" }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ projectTier: "standard" }));
+  });
+
+  it("hides the project type and leaves it out of the save by default", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<WorkItemForm kind="project" statuses={statuses} onSubmit={onSubmit} onCancel={vi.fn()} />);
+
+    expect(screen.queryByLabelText("Project type")).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText("Title"), "Other");
+    await user.click(screen.getByRole("button", { name: "Create project" }));
+    expect(onSubmit.mock.calls[0][0]).not.toHaveProperty("projectTier");
+  });
 });
