@@ -968,10 +968,10 @@ export function DashboardShell({
                     type="button"
                     className="filter-button filter-tag-chip"
                     data-active="true"
-                    aria-label={`Clear ${activeTierRow.chip} filter`}
+                    aria-label={`${activeTierRow.chip}, clear filter`}
                     onClick={() => setTierFilter("all")}
                   >
-                    {activeTierRow.chip} ×
+                    {activeTierRow.chip} <span aria-hidden="true">×</span>
                   </button>
                 ) : null}
               </StatusFilters>

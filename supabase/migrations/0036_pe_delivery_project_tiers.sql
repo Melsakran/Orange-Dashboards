@@ -1,5 +1,6 @@
 -- PE Development: Critical / Standard project tag, an "Upcoming Delivery"
--- status after Development, and On Hold moved after Delayed. Re-runnable.
+-- status after Development, and On Hold moved after Delayed. Re-runnable, but
+-- each run resets the PE Development status order to the one below.
 
 alter table public.work_items
   add column if not exists project_tier text not null default 'standard';

@@ -531,6 +531,10 @@ describe("DashboardShell", () => {
     expect(count(standard, /^Projects \/ CRS/)).toBe("2");
     expect(count(standard, /^Development/)).toBe("1");
     expect(count(standard, /^On Hold/)).toBe("1");
+    expect(within(critical).getByRole("button", { name: /^Development/ }))
+      .toHaveAccessibleDescription("Critical Projects");
+    expect(within(standard).getByRole("button", { name: /^Development/ }))
+      .toHaveAccessibleDescription("Standard Projects");
 
     await user.click(within(critical).getByRole("button", { name: /^Development/ }));
     expect(within(critical).getByRole("button", { name: /^Development/ }))
@@ -545,10 +549,10 @@ describe("DashboardShell", () => {
     await user.click(within(statusFilters).getByRole("button", { name: "On Hold" }));
     expect(screen.getByText("0 visible")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Clear Critical projects filter" }));
+    await user.click(screen.getByRole("button", { name: "Critical projects, clear filter" }));
     expect(screen.getByText("1 visible")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "View Standard hold details" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Clear Critical projects filter" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Critical projects, clear filter" })).not.toBeInTheDocument();
 
     await user.click(within(standard).getByRole("button", { name: /^Projects \/ CRS/ }));
     expect(screen.getByText("2 visible")).toBeInTheDocument();

@@ -38,6 +38,9 @@ export function KpiGrid({
     })),
   ];
 
+  const headingId = title
+    ? `kpi-row-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`
+    : undefined;
   const cards = metrics.map((metric) => {
     const active = activeFilter === metric.value;
     return (
@@ -46,6 +49,7 @@ export function KpiGrid({
         className="kpi-card kpi-card-button"
         data-active={active}
         aria-pressed={active}
+        aria-describedby={headingId}
         key={metric.value}
         style={{ ["--kpi-accent" as string]: metric.color }}
         onClick={() => onSelect(metric.value)}
@@ -65,7 +69,6 @@ export function KpiGrid({
     );
   }
 
-  const headingId = `kpi-row-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   return (
     <section className="kpi-row" aria-labelledby={headingId}>
       <h2 className="kpi-row-title" id={headingId}>{title}</h2>
