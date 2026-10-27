@@ -163,9 +163,7 @@ export function validateWorkItemDraft(
     }
     if (options.deliveryFields) {
       const readinessDate = fields.readinessDate ?? "";
-      if (readinessDate && fields.endDate && readinessDate < fields.endDate) {
-        errors.readinessDate = "Readiness Date must be on or after the Deployment Date.";
-      } else if (readinessDate && fields.startDate && readinessDate < fields.startDate) {
+      if (readinessDate && fields.startDate && readinessDate < fields.startDate) {
         errors.readinessDate = "Readiness Date must be on or after the Start Date.";
       }
       if (parseWorkingDays(fields.teamEffortWd ?? "") === undefined) {

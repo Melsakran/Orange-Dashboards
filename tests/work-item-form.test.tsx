@@ -108,14 +108,23 @@ describe("validateWorkItemDraft", () => {
       }, "dates", delivery).endDate).toBe("Deployment Date must be on or after the Start Date.");
     });
 
-    it("rejects a Readiness Date before the Deployment Date", () => {
+    it("allows a Readiness Date before the Deployment Date", () => {
       expect(validateWorkItemDraft({
         ...emptyDraft,
         startDate: "2026-07-01",
         endDate: "2026-07-20",
         readinessDate: "2026-07-19",
+      }, "dates", delivery)).toEqual({});
+    });
+
+    it("rejects a Readiness Date before the Start Date even with a Deployment Date", () => {
+      expect(validateWorkItemDraft({
+        ...emptyDraft,
+        startDate: "2026-07-01",
+        endDate: "2026-07-20",
+        readinessDate: "2026-06-30",
       }, "dates", delivery).readinessDate)
-        .toBe("Readiness Date must be on or after the Deployment Date.");
+        .toBe("Readiness Date must be on or after the Start Date.");
     });
 
     it("rejects a Readiness Date before the Start Date when Deployment is empty", () => {

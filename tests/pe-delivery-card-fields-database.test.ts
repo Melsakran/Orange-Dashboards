@@ -71,6 +71,7 @@ describe("PE Development card fields migration", () => {
        limit 1;
     `);
     await db.exec(read(migrationPath));
+    await db.exec(read("supabase/migrations/0038_pe_readiness_before_deployment.sql"));
   });
 
   afterAll(async () => {
@@ -105,8 +106,16 @@ describe("PE Development card fields migration", () => {
     });
   });
 
+  it("allows a readiness date before the deployment date", async () => {
+    await db.exec(`update public.work_items set readiness_date = '2026-02-28' where id = '${PE_ITEM}'`);
+    expect((await item(PE_ITEM)).readiness_date).toBe("2026-02-28");
+  });
+
   it.each([
-    ["a readiness date before the deployment date", "readiness_date = '2026-02-28'"],
+    [
+      "a readiness date before the start date when deployment is set",
+      "end_date = '2026-03-01', readiness_date = '2025-12-31'",
+    ],
     [
       "a readiness date before the start date when deployment is empty",
       "end_date = null, readiness_date = '2025-12-31'",

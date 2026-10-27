@@ -35,10 +35,8 @@ alter table public.work_items
 alter table public.work_items
   add constraint work_items_readiness_date_order check (
     readiness_date is null
-    or (
-      (end_date is null or readiness_date >= end_date)
-      and (start_date is null or readiness_date >= start_date)
-    )
+    or start_date is null
+    or readiness_date >= start_date
   ),
   add constraint work_items_team_effort_wd_nonnegative
     check (team_effort_wd is null or team_effort_wd >= 0),
