@@ -111,6 +111,7 @@ export interface DashboardViewModel {
   slug: string;
   name: string;
   description: string;
+  tagLabel?: string;
   jiraLinked: boolean;
   jiraBrowseBaseUrl?: string;
   lastJiraSyncAt?: string;
@@ -324,6 +325,7 @@ export function mapDashboardRows(
     slug: rows.workspace.slug,
     name: rows.workspace.name,
     description: rows.workspace.description ?? "",
+    ...(rows.workspace.tag_label?.trim() ? { tagLabel: rows.workspace.tag_label.trim() } : {}),
     jiraLinked: Boolean(options?.jiraLinked),
     ...(options?.jiraBrowseBaseUrl ? { jiraBrowseBaseUrl: options.jiraBrowseBaseUrl } : {}),
     ...(options?.lastJiraSyncAt ? { lastJiraSyncAt: options.lastJiraSyncAt } : {}),

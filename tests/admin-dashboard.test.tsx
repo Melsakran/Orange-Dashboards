@@ -11,6 +11,7 @@ const mutationMocks = vi.hoisted(() => ({
   deleteWorkItem: vi.fn(),
   reorderWorkItems: vi.fn(),
 }));
+const updateWorkspaceTag = vi.hoisted(() => vi.fn());
 const refetch = vi.hoisted(() => vi.fn());
 const realtimeState = vi.hoisted(() => ({ data: undefined as unknown }));
 
@@ -22,6 +23,7 @@ vi.mock("@/lib/data/work-item-mutations", async (importOriginal) => ({
   ...await importOriginal<typeof import("@/lib/data/work-item-mutations")>(),
   ...mutationMocks,
 }));
+vi.mock("@/lib/data/workspace-mutations", () => ({ updateWorkspaceTag }));
 vi.mock("@/hooks/use-workspace-realtime", () => ({
   useWorkspaceRealtime: (initialData: unknown) => ({
     data: realtimeState.data ?? initialData,
@@ -250,6 +252,32 @@ describe("admin dashboard controls", () => {
     await user.click(within(details).getByRole("button", { name: "Add subtask" }));
     const subtaskDialog = screen.getByRole("dialog", { name: /new subtask/i });
     expect(within(subtaskDialog).queryByLabelText("Project type")).not.toBeInTheDocument();
+  });
+
+  it("lets admins set the PE Development tag next to the project type toggle", async () => {
+    const user = userEvent.setup();
+    const peDashboard = { ...dashboard, slug: "pe-delivery", name: "PE Development" };
+    realtimeState.data = peDashboard;
+    updateWorkspaceTag.mockResolvedValue(undefined);
+    refetch.mockResolvedValue({ ...peDashboard, tagLabel: "October/November" });
+    render(<DashboardShell initialDashboard={peDashboard} source="database" isAdmin />);
+
+    const overview = screen.getByRole("region", { name: "Workspace status overview" });
+    await user.click(within(overview).getByRole("button", { name: "Add tag" }));
+    await user.type(within(overview).getByLabelText("Tag"), "October/November");
+    await user.click(within(overview).getByRole("button", { name: "Save tag" }));
+
+    await vi.waitFor(() => expect(updateWorkspaceTag).toHaveBeenCalledWith(
+      expect.anything(),
+      dashboard.id,
+      "October/November",
+    ));
+    expect(await within(overview).findByText("October/November")).toBeInTheDocument();
+  });
+
+  it("does not offer the tag on other dashboards", () => {
+    render(<DashboardShell initialDashboard={dashboard} source="database" isAdmin />);
+    expect(screen.queryByRole("button", { name: "Add tag" })).not.toBeInTheDocument();
   });
 
   it("rolls a failed deletion back and offers retry", async () => {

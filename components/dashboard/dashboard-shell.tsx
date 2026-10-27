@@ -62,6 +62,8 @@ import { PeDeliveryNotes } from "./pe-delivery-notes";
 import { ProjectCard } from "./project-card";
 import { ProjectDetailsModal } from "./project-details-modal";
 import { ProjectTierToggle } from "./project-tier-toggle";
+import { WorkspaceTag } from "./workspace-tag";
+import { updateWorkspaceTag } from "@/lib/data/workspace-mutations";
 import { StatusFilters, type StatusFilter } from "./status-filters";
 
 interface DashboardShellProps {
@@ -774,6 +776,13 @@ export function DashboardShell({
     setActiveFilter(effectiveFilter === filter ? "all" : filter);
   }
 
+  const saveWorkspaceTag = supabase
+    ? async (tag: string | null) => {
+        await updateWorkspaceTag(supabase, workspace.id, tag);
+        commitAuthoritative(await realtime.refetch());
+      }
+    : undefined;
+
   const liveStatus = useMemo(
     () => workspace.statuses.find((status) => status.name.trim().toLowerCase() === "live"),
     [workspace.statuses],
@@ -863,7 +872,12 @@ export function DashboardShell({
 
         {usesProjectTiers ? (
           <KpiGrid
-            header={<ProjectTierToggle value={selectedTier} onChange={setSelectedTier} />}
+            header={
+              <>
+                <ProjectTierToggle value={selectedTier} onChange={setSelectedTier} />
+                <WorkspaceTag value={workspace.tagLabel} onSave={saveWorkspaceTag} />
+              </>
+            }
             statuses={workspace.statuses}
             projects={tierProjects}
             activeFilter={effectiveFilter}

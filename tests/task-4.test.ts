@@ -19,6 +19,7 @@ const rows: DashboardRows = {
     slug: "alpha",
     name: "Alpha",
     description: null,
+    tag_label: null,
     sort_order: 0,
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
@@ -167,6 +168,14 @@ const rows: DashboardRows = {
 };
 
 describe("dashboard data mapping", () => {
+  it("maps the workspace tag and drops blank tags", () => {
+    expect(mapDashboardRows({ ...rows, workspace: { ...rows.workspace, tag_label: " October/November " } }).tagLabel)
+      .toBe("October/November");
+    expect(mapDashboardRows({ ...rows, workspace: { ...rows.workspace, tag_label: "   " } }))
+      .not.toHaveProperty("tagLabel");
+    expect(mapDashboardRows(rows)).not.toHaveProperty("tagLabel");
+  });
+
   it("preserves normalized sort order and workspace isolation", () => {
     const dashboard = mapDashboardRows(rows);
 
