@@ -61,12 +61,8 @@ import { LiveVariantFilterControl, type LiveVariantFilter } from "./live-variant
 import { PeDeliveryNotes } from "./pe-delivery-notes";
 import { ProjectCard } from "./project-card";
 import { ProjectDetailsModal } from "./project-details-modal";
+import { ProjectTierToggle } from "./project-tier-toggle";
 import { StatusFilters, type StatusFilter } from "./status-filters";
-
-const PROJECT_TIER_ROWS: ReadonlyArray<{ tier: ProjectTier; title: string; chip: string }> = [
-  { tier: "critical", title: "Critical Projects", chip: "Critical projects" },
-  { tier: "standard", title: "Standard Projects", chip: "Standard projects" },
-];
 
 interface DashboardShellProps {
   initialDashboard: DashboardViewModel;
@@ -223,6 +219,7 @@ interface EditorDialogProps {
     message: string;
     retry?: () => void;
   } | null;
+  defaultProjectTier: ProjectTier;
 }
 
 function EditorDialog({
@@ -231,6 +228,7 @@ function EditorDialog({
   onSubmit,
   onClose,
   retryNotice,
+  defaultProjectTier,
 }: EditorDialogProps) {
   const noun = editor.kind === "project" ? "project" : "subtask";
   const title = `${editor.item ? "Edit" : "New"} ${noun}`;
@@ -276,6 +274,7 @@ function EditorDialog({
         }
         deliveryFields={isPeDeliveryWorkspace(dashboard.slug)}
         showProjectTier={isPeDeliveryWorkspace(dashboard.slug) && editor.kind === "project"}
+        defaultProjectTier={defaultProjectTier}
         showProgress={!isDigitalStyleWorkspace(dashboard.slug)}
         showRelease={isDigitalStyleWorkspace(dashboard.slug)}
         useTeamTracks={usesTeamTracks(dashboard.slug)}
@@ -301,7 +300,7 @@ export function DashboardShell({
   const authoritativeRef = useRef(realtime.data);
   const mutationBusyRef = useRef(false);
   const [activeFilter, setActiveFilter] = useState<StatusFilter>("all");
-  const [tierFilter, setTierFilter] = useState<"all" | ProjectTier>("all");
+  const [selectedTier, setSelectedTier] = useState<ProjectTier>("critical");
   const [liveVariant, setLiveVariant] = useState<LiveVariantFilter>("live");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorState | null>(null);
@@ -763,17 +762,16 @@ export function DashboardShell({
       ? activeFilter
       : "all";
   const usesProjectTiers = isPeDeliveryWorkspace(workspace.slug);
-  const effectiveTier = usesProjectTiers ? tierFilter : "all";
-  const activeTierRow = PROJECT_TIER_ROWS.find((row) => row.tier === effectiveTier);
+  const effectiveTier = usesProjectTiers ? selectedTier : "all";
+  const tierProjects = useMemo(
+    () => effectiveTier === "all"
+      ? workspace.projects
+      : workspace.projects.filter((project) => projectTierOf(project) === effectiveTier),
+    [effectiveTier, workspace.projects],
+  );
 
-  function selectTierKpi(tier: ProjectTier, filter: StatusFilter) {
-    if (effectiveTier === tier && effectiveFilter === filter) {
-      setTierFilter("all");
-      setActiveFilter("all");
-      return;
-    }
-    setTierFilter(tier);
-    setActiveFilter(filter);
+  function selectTierKpi(filter: StatusFilter) {
+    setActiveFilter(effectiveFilter === filter ? "all" : filter);
   }
 
   const liveStatus = useMemo(
@@ -787,16 +785,13 @@ export function DashboardShell({
 
   const visibleProjects = useMemo(() => {
     const byStatus = effectiveFilter === "all"
-      ? workspace.projects
-      : workspace.projects.filter((project) =>
+      ? tierProjects
+      : tierProjects.filter((project) =>
           projectMatchesStatusFilter(project, effectiveFilter));
-    const byTier = effectiveTier === "all"
-      ? byStatus
-      : byStatus.filter((project) => projectTierOf(project) === effectiveTier);
 
-    if (!isPeLiveFilter || !liveStatus) return byTier;
+    if (!isPeLiveFilter || !liveStatus) return byStatus;
 
-    return byTier.filter((project) => {
+    return byStatus.filter((project) => {
       const hasNonLiveChild = project.subtasks.some(
         (child) => child.statusId !== liveStatus.id,
       );
@@ -804,11 +799,10 @@ export function DashboardShell({
     });
   }, [
     effectiveFilter,
-    effectiveTier,
     isPeLiveFilter,
     liveStatus,
     liveVariant,
-    workspace.projects,
+    tierProjects,
   ]);
 
   return (
@@ -868,19 +862,14 @@ export function DashboardShell({
         </header>
 
         {usesProjectTiers ? (
-          <div className="kpi-rows" role="region" aria-label="Workspace status overview">
-            {PROJECT_TIER_ROWS.map((row) => (
-              <KpiGrid
-                key={row.tier}
-                title={row.title}
-                statuses={workspace.statuses}
-                projects={workspace.projects.filter((project) => projectTierOf(project) === row.tier)}
-                activeFilter={effectiveTier === row.tier ? effectiveFilter : null}
-                onSelect={(filter) => selectTierKpi(row.tier, filter)}
-                allLabel={allFilterLabel(workspace.slug)}
-              />
-            ))}
-          </div>
+          <KpiGrid
+            header={<ProjectTierToggle value={selectedTier} onChange={setSelectedTier} />}
+            statuses={workspace.statuses}
+            projects={tierProjects}
+            activeFilter={effectiveFilter}
+            onSelect={selectTierKpi}
+            allLabel={allFilterLabel(workspace.slug)}
+          />
         ) : (
           <KpiGrid
             statuses={workspace.statuses}
@@ -962,19 +951,7 @@ export function DashboardShell({
                 statuses={workspace.statuses}
                 onChange={setActiveFilter}
                 allLabel={allFilterLabel(workspace.slug)}
-              >
-                {activeTierRow ? (
-                  <button
-                    type="button"
-                    className="filter-button filter-tag-chip"
-                    data-active="true"
-                    aria-label={`${activeTierRow.chip}, clear filter`}
-                    onClick={() => setTierFilter("all")}
-                  >
-                    {activeTierRow.chip} <span aria-hidden="true">×</span>
-                  </button>
-                ) : null}
-              </StatusFilters>
+              />
               {visibleProjects.length ? (
                 <div className="projects-grid">
                   {visibleProjects.map((project) => (
@@ -1101,6 +1078,7 @@ export function DashboardShell({
           onSubmit={submitEditor}
           onClose={() => setEditor(null)}
           retryNotice={mutationNotice}
+          defaultProjectTier={selectedTier}
         />
       ) : selectedProject ? (
         <ProjectDetailsModal

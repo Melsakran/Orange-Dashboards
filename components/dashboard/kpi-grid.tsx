@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { DashboardProject, DashboardStatus } from "@/lib/data/dashboard";
 import { projectMatchesStatusFilter } from "@/lib/data/dashboard";
 import type { StatusFilter } from "@/components/dashboard/status-filters";
@@ -8,7 +9,7 @@ interface KpiGridProps {
   activeFilter: StatusFilter | null;
   onSelect: (filter: StatusFilter) => void;
   allLabel?: string;
-  title?: string;
+  header?: ReactNode;
 }
 
 export function KpiGrid({
@@ -17,7 +18,7 @@ export function KpiGrid({
   activeFilter,
   onSelect,
   allLabel = "All Projects",
-  title,
+  header,
 }: KpiGridProps) {
   // Derived from live workspace.statuses / projects so admin add/rename/reorder
   // and realtime updates show up in the KPI cards automatically.
@@ -38,9 +39,6 @@ export function KpiGrid({
     })),
   ];
 
-  const headingId = title
-    ? `kpi-row-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`
-    : undefined;
   const cards = metrics.map((metric) => {
     const active = activeFilter === metric.value;
     return (
@@ -49,7 +47,6 @@ export function KpiGrid({
         className="kpi-card kpi-card-button"
         data-active={active}
         aria-pressed={active}
-        aria-describedby={headingId}
         key={metric.value}
         style={{ ["--kpi-accent" as string]: metric.color }}
         onClick={() => onSelect(metric.value)}
@@ -61,7 +58,7 @@ export function KpiGrid({
     );
   });
 
-  if (!title) {
+  if (!header) {
     return (
       <section className="kpi-grid kpi-grid-status" aria-label="Workspace status overview">
         {cards}
@@ -70,8 +67,8 @@ export function KpiGrid({
   }
 
   return (
-    <section className="kpi-row" aria-labelledby={headingId}>
-      <h2 className="kpi-row-title" id={headingId}>{title}</h2>
+    <section className="kpi-row" aria-label="Workspace status overview">
+      <div className="kpi-row-header">{header}</div>
       <div className="kpi-grid kpi-grid-status">{cards}</div>
     </section>
   );

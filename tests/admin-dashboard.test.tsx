@@ -193,6 +193,7 @@ describe("admin dashboard controls", () => {
     realtimeState.data = peDashboard;
     render(<DashboardShell initialDashboard={peDashboard} source="database" isAdmin />);
 
+    await user.click(screen.getByRole("button", { name: "Standard Projects" }));
     await user.click(screen.getByRole("button", { name: "Edit Existing project" }));
     const dialog = screen.getByRole("dialog", { name: "Edit project" });
     expect(within(dialog).getByLabelText("Start Date")).toBeInTheDocument();
@@ -234,7 +235,13 @@ describe("admin dashboard controls", () => {
     render(<DashboardShell initialDashboard={peDashboard} source="database" isAdmin />);
 
     await user.click(screen.getByRole("button", { name: "New Project" }));
-    const projectDialog = screen.getByRole("dialog", { name: "New project" });
+    let projectDialog = screen.getByRole("dialog", { name: "New project" });
+    expect(within(projectDialog).getByLabelText("Project type")).toHaveValue("critical");
+    await user.click(within(projectDialog).getByRole("button", { name: "Close project form" }));
+
+    await user.click(screen.getByRole("button", { name: "Standard Projects" }));
+    await user.click(screen.getByRole("button", { name: "New Project" }));
+    projectDialog = screen.getByRole("dialog", { name: "New project" });
     expect(within(projectDialog).getByLabelText("Project type")).toHaveValue("standard");
     await user.click(within(projectDialog).getByRole("button", { name: "Close project form" }));
 

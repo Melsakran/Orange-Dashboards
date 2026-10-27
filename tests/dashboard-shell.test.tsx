@@ -456,7 +456,7 @@ describe("DashboardShell", () => {
     );
 
     const overview = screen.getByRole("region", { name: "Workspace status overview" });
-    expect(within(overview).getAllByRole("button", { name: /Projects \/ CRS/i })).toHaveLength(2);
+    expect(within(overview).getAllByRole("button", { name: /Projects \/ CRS/i })).toHaveLength(1);
     expect(within(overview).queryByRole("button", { name: /All Projects/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Projects / CRS" })).toBeInTheDocument();
 
@@ -474,7 +474,7 @@ describe("DashboardShell", () => {
     expect(within(notes).getByText("10 WDs")).toBeInTheDocument();
   });
 
-  it("splits PE Development KPIs into Critical and Standard rows that filter by tag", async () => {
+  it("switches PE Development KPIs and projects between Critical and Standard", async () => {
     const user = userEvent.setup();
     const peDashboard = mapFixtureWorkspace({
       slug: "pe-delivery",
@@ -510,10 +510,18 @@ describe("DashboardShell", () => {
     );
 
     const overview = screen.getByRole("region", { name: "Workspace status overview" });
-    const critical = within(overview).getByRole("region", { name: "Critical Projects" });
-    const standard = within(overview).getByRole("region", { name: "Standard Projects" });
-    expect(within(critical).getAllByRole("button").map((button) =>
-      button.querySelector(".kpi-label")?.textContent)).toEqual([
+    const toggle = within(overview).getByRole("group", { name: "Project type" });
+    const critical = within(toggle).getByRole("button", { name: "Critical Projects" });
+    const standard = within(toggle).getByRole("button", { name: "Standard Projects" });
+    const kpiLabels = () => within(overview).getAllByRole("button")
+      .map((button) => button.querySelector(".kpi-label")?.textContent)
+      .filter(Boolean);
+    const count = (label: RegExp) =>
+      within(overview).getByRole("button", { name: label }).querySelector(".kpi-value")?.textContent;
+
+    expect(critical).toHaveAttribute("aria-pressed", "true");
+    expect(standard).toHaveAttribute("aria-pressed", "false");
+    expect(kpiLabels()).toEqual([
       "Projects / CRS",
       "Planning",
       "Development",
@@ -523,41 +531,37 @@ describe("DashboardShell", () => {
       "Delayed",
       "On Hold",
     ]);
-    const count = (row: HTMLElement, label: RegExp) =>
-      within(row).getByRole("button", { name: label }).querySelector(".kpi-value")?.textContent;
-    expect(count(critical, /^Projects \/ CRS/)).toBe("1");
-    expect(count(critical, /^Development/)).toBe("1");
-    expect(count(critical, /^On Hold/)).toBe("0");
-    expect(count(standard, /^Projects \/ CRS/)).toBe("2");
-    expect(count(standard, /^Development/)).toBe("1");
-    expect(count(standard, /^On Hold/)).toBe("1");
-    expect(within(critical).getByRole("button", { name: /^Development/ }))
-      .toHaveAccessibleDescription("Critical Projects");
-    expect(within(standard).getByRole("button", { name: /^Development/ }))
-      .toHaveAccessibleDescription("Standard Projects");
-
-    await user.click(within(critical).getByRole("button", { name: /^Development/ }));
-    expect(within(critical).getByRole("button", { name: /^Development/ }))
-      .toHaveAttribute("aria-pressed", "true");
-    expect(within(standard).getByRole("button", { name: /^Development/ }))
-      .toHaveAttribute("aria-pressed", "false");
+    expect(count(/^Projects \/ CRS/)).toBe("1");
+    expect(count(/^Development/)).toBe("1");
+    expect(count(/^On Hold/)).toBe("0");
     expect(screen.getByText("1 visible")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "View Critical build details" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "View Standard build details" })).not.toBeInTheDocument();
 
+    await user.click(standard);
+    expect(standard).toHaveAttribute("aria-pressed", "true");
+    expect(critical).toHaveAttribute("aria-pressed", "false");
+    expect(count(/^Projects \/ CRS/)).toBe("2");
+    expect(count(/^Development/)).toBe("1");
+    expect(count(/^On Hold/)).toBe("1");
+    expect(screen.getByText("2 visible")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "View Critical build details" })).not.toBeInTheDocument();
+
+    await user.click(within(overview).getByRole("button", { name: /^Development/ }));
+    expect(within(overview).getByRole("button", { name: /^Development/ }))
+      .toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("1 visible")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View Standard build details" })).toBeInTheDocument();
+    await user.click(within(overview).getByRole("button", { name: /^Development/ }));
+    expect(screen.getByText("2 visible")).toBeInTheDocument();
+
     const statusFilters = screen.getByLabelText("Filter projects by status");
     await user.click(within(statusFilters).getByRole("button", { name: "On Hold" }));
-    expect(screen.getByText("0 visible")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Critical projects, clear filter" }));
     expect(screen.getByText("1 visible")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "View Standard hold details" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Critical projects, clear filter" })).not.toBeInTheDocument();
 
-    await user.click(within(standard).getByRole("button", { name: /^Projects \/ CRS/ }));
-    expect(screen.getByText("2 visible")).toBeInTheDocument();
-    await user.click(within(standard).getByRole("button", { name: /^Projects \/ CRS/ }));
-    expect(screen.getByText("3 visible")).toBeInTheDocument();
+    await user.click(critical);
+    expect(screen.getByText("0 visible")).toBeInTheDocument();
   });
 
   it("shows Action Owner on PE Development cards", () => {
@@ -574,6 +578,7 @@ describe("DashboardShell", () => {
       statusColor: peDashboard.statuses[0].color,
       owner: "Alex Owner",
       ownerRole: undefined,
+      projectTier: "critical" as const,
       subtasks: [],
     };
     render(
@@ -610,6 +615,7 @@ describe("DashboardShell", () => {
       readinessDate: "2026-04-20",
       teamEffortWd: 8,
       timeToMarketWd: 12.5,
+      projectTier: "critical" as const,
       subtasks: [
         {
           ...dashboard.projects[0],

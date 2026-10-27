@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import type { DashboardStatus } from "@/lib/data/dashboard";
 
 export type StatusFilter = "all" | string;
@@ -8,7 +7,6 @@ interface StatusFiltersProps {
   statuses: DashboardStatus[];
   onChange: (filter: StatusFilter) => void;
   allLabel?: string;
-  children?: ReactNode;
 }
 
 export function StatusFilters({
@@ -16,7 +14,6 @@ export function StatusFilters({
   statuses,
   onChange,
   allLabel = "All Projects",
-  children,
 }: StatusFiltersProps) {
   const filters: Array<{ value: StatusFilter; label: string }> = [
     { value: "all", label: allLabel },
@@ -36,7 +33,6 @@ export function StatusFilters({
           {filter.label}
         </button>
       ))}
-      {children}
     </div>
   );
 }

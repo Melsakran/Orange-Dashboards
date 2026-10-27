@@ -189,6 +189,7 @@ export function validateWorkItemDraft(
 function initialFields(
   statuses: DashboardStatus[],
   value?: DashboardWorkItem,
+  defaultProjectTier: ProjectTier = "standard",
 ): WorkItemDraftFields {
   return {
     title: value?.title ?? "",
@@ -205,7 +206,7 @@ function initialFields(
     readinessDate: value?.readinessDate ?? "",
     teamEffortWd: value?.teamEffortWd?.toString() ?? "",
     timeToMarketWd: value?.timeToMarketWd?.toString() ?? "",
-    projectTier: projectTierOf(value ?? {}),
+    projectTier: value ? projectTierOf(value) : defaultProjectTier,
   };
 }
 
@@ -246,6 +247,7 @@ interface WorkItemFormProps {
   useTeamTracks?: boolean;
   deliveryFields?: boolean;
   showProjectTier?: boolean;
+  defaultProjectTier?: ProjectTier;
   onSubmit: (value: WorkItemFormValue) => Promise<void>;
   onCancel: () => void;
 }
@@ -265,12 +267,13 @@ export function WorkItemForm({
   useTeamTracks = false,
   deliveryFields = false,
   showProjectTier = false,
+  defaultProjectTier = "standard",
   onSubmit,
   onCancel,
 }: WorkItemFormProps) {
   // The form is intentionally initialized once. Realtime refreshes must not overwrite
   // fields while an administrator is editing them.
-  const [fields, setFields] = useState(() => initialFields(statuses, initialValue));
+  const [fields, setFields] = useState(() => initialFields(statuses, initialValue, defaultProjectTier));
   const [teamTracks, setTeamTracks] = useState(() => initialTeamTracks(statuses, initialValue));
   const [errors, setErrors] = useState<WorkItemFormErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
