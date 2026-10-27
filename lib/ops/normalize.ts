@@ -70,9 +70,9 @@ export function normalizeRequests(sheet: RawSheet): NormalizeResult {
     }
     seenIds.set(interactionId, row.rowNumber);
 
-    const status = value("Status").toLowerCase();
+    const status = value("Status").trim().toLowerCase().replace(/[\s_-]+/g, "_");
     if (!isOpsStatus(status)) {
-      fail(`Unrecognized status "${value("Status")}". Use Open, Pending, or Closed.`);
+      fail(`Unrecognized status "${value("Status")}". Use Open, In Progress, Pending, or Closed.`);
       continue;
     }
 

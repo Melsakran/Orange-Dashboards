@@ -86,6 +86,7 @@ describe("ops requests database", () => {
       alter default privileges in schema public grant execute on functions to anon, authenticated, service_role;
     `);
     await db.exec(read("supabase/migrations/0033_ops_requests.sql"));
+    await db.exec(read("supabase/migrations/0037_ops_in_progress_status.sql"));
     await db.exec(`
       insert into auth.users (id) values ('${ADMIN_ID}'), ('${USER_ID}');
       insert into public.admin_users (auth_user_id, email, display_name)
@@ -147,6 +148,19 @@ describe("ops requests database", () => {
       row_count: 1,
       uploaded_by_email: "admin@example.com",
     });
+  });
+
+  it("accepts In Progress requests and still rejects unknown statuses", async () => {
+    await setIdentity(db, "authenticated", ADMIN_ID);
+    await replace(db, "wk44.csv", [row("SD1", { status: "in_progress", close_date: null })]);
+    const stored = await db.query<{ status: string }>("select status from public.ops_requests");
+    expect(stored.rows).toEqual([{ status: "in_progress" }]);
+
+    await expectError(
+      db,
+      () => replace(db, "bad.csv", [row("SD2", { status: "resolved" })]),
+      /ops_requests_status_check/,
+    );
   });
 
   it("keeps the previous rows when a replace fails", async () => {

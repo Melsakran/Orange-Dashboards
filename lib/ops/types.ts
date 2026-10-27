@@ -1,9 +1,10 @@
-export const OPS_STATUSES = ["open", "pending", "closed"] as const;
+export const OPS_STATUSES = ["open", "in_progress", "pending", "closed"] as const;
 
 export type OpsStatus = (typeof OPS_STATUSES)[number];
 
 export const OPS_STATUS_LABELS: Record<OpsStatus, string> = {
   open: "Open",
+  in_progress: "In Progress",
   pending: "Pending",
   closed: "Closed",
 };

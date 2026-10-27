@@ -34,6 +34,7 @@ describe("OpsRequestsPage", () => {
     expect(within(overview).getByText("Total requests").nextSibling).toHaveTextContent("5");
     expect(within(overview).getByRole("button", { name: /^Open/ })).toHaveTextContent("1");
     expect(within(overview).getByRole("button", { name: /^Pending/ })).toHaveTextContent("1");
+    expect(within(overview).getByRole("button", { name: /^In Progress/ })).toHaveTextContent("0");
     expect(within(overview).getByRole("button", { name: /^Closed/ })).toHaveTextContent("3");
     expect(within(overview).getByText("60%")).toBeInTheDocument();
 

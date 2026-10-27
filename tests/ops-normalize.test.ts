@@ -87,6 +87,16 @@ describe("normalizeRequests", () => {
     });
   });
 
+  it.each(["In Progress", "in progress", "IN-PROGRESS", "In_Progress", " In  Progress "])(
+    "accepts %j as the In Progress status",
+    (status) => {
+      const result = normalizeRequests(sheetOf([{ ...validRow, Status: status, "Close Date": "" }]));
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.requests[0].status).toBe("in_progress");
+    },
+  );
+
   it("reports missing headers in spec order and stops", () => {
     const columns = REQUIRED_COLUMNS.filter((column) => column !== "Closure Code" && column !== "Assigned To");
     const result = normalizeRequests(sheetOf([validRow], columns));
@@ -132,7 +142,7 @@ describe("normalizeRequests", () => {
       errors: [
         { rowNumber: 3, interactionId: "", message: "Interaction ID is required." },
         { rowNumber: 4, interactionId: "SD1", message: "Duplicate Interaction ID (also on row 2)." },
-        { rowNumber: 5, interactionId: "SD3", message: 'Unrecognized status "Resolved". Use Open, Pending, or Closed.' },
+        { rowNumber: 5, interactionId: "SD3", message: 'Unrecognized status "Resolved". Use Open, In Progress, Pending, or Closed.' },
         { rowNumber: 6, interactionId: "SD4", message: "Assignment Time is required." },
         { rowNumber: 7, interactionId: "SD5", message: 'Unrecognized assignment time "31/31/2026". Use month/day/year.' },
         { rowNumber: 8, interactionId: "SD6", message: 'Unrecognized close date "tomorrow". Use month/day/year.' },

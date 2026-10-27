@@ -8,6 +8,7 @@ import { OPS_STATUSES, OPS_STATUS_LABELS, type OpsStatus } from "@/lib/ops/types
 
 const STATUS_COLORS: Record<OpsStatus, string> = {
   open: "#b63027",
+  in_progress: "#246a91",
   pending: "#a94806",
   closed: "#237b4b",
 };

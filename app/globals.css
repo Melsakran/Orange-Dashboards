@@ -2706,6 +2706,11 @@ footer {
   color: #b63027;
 }
 
+.ops-status-in_progress {
+  background: #e7f1f7;
+  color: #246a91;
+}
+
 .ops-status-pending {
   background: #fff3e6;
   color: #a94806;

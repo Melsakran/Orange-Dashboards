@@ -26,6 +26,7 @@ function PersonTable({
               <th scope="col">Name</th>
               <th scope="col" className="ops-number">Total</th>
               <th scope="col" className="ops-number">Open</th>
+              <th scope="col" className="ops-number">In progress</th>
               <th scope="col" className="ops-number">Pending</th>
               <th scope="col" className="ops-number">Closed</th>
               {showResolution ? (
@@ -42,6 +43,7 @@ function PersonTable({
                 <th scope="row">{row.name}</th>
                 <td className="ops-number">{row.total}</td>
                 <td className="ops-number">{row.counts.open}</td>
+                <td className="ops-number">{row.counts.in_progress}</td>
                 <td className="ops-number">{row.counts.pending}</td>
                 <td className="ops-number">{row.counts.closed}</td>
                 {showResolution ? (

@@ -39,7 +39,7 @@ describe("Ops Requests upload", () => {
     await user.upload(chooseFile(), new File([sampleCsv], "export.csv", { type: "text/csv" }));
 
     const dialog = await screen.findByRole("dialog", { name: "export.csv" });
-    expect(dialog).toHaveTextContent("19 requests found — 0 open, 0 pending, 19 closed");
+    expect(dialog).toHaveTextContent("19 requests found — 0 open, 0 in progress, 0 pending, 19 closed");
     expect(dialog).toHaveTextContent("Replacing will delete all current Ops Requests data");
 
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
@@ -113,7 +113,7 @@ describe("Ops Requests upload", () => {
     const items = within(within(dialog).getByRole("list")).getAllByRole("listitem");
     expect(items).toHaveLength(60);
     expect(items[0]).toHaveTextContent(
-      'Row 2 (SD1): Unrecognized status "Resolved". Use Open, Pending, or Closed.',
+      'Row 2 (SD1): Unrecognized status "Resolved". Use Open, In Progress, Pending, or Closed.',
     );
     expect(items[59]).toHaveTextContent(/^Row 61 \(SD60\): Unrecognized status/);
   });
