@@ -456,7 +456,7 @@ describe("DashboardShell", () => {
     );
 
     const overview = screen.getByRole("region", { name: "Workspace status overview" });
-    expect(within(overview).getByRole("button", { name: /Projects \/ CRS/i })).toBeInTheDocument();
+    expect(within(overview).getAllByRole("button", { name: /Projects \/ CRS/i })).toHaveLength(2);
     expect(within(overview).queryByRole("button", { name: /All Projects/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Projects / CRS" })).toBeInTheDocument();
 
@@ -472,6 +472,88 @@ describe("DashboardShell", () => {
     expect(within(notes).getByText(/Average efforts in the last 3 months/i)).toBeInTheDocument();
     expect(within(notes).getByText("2 WDs")).toBeInTheDocument();
     expect(within(notes).getByText("10 WDs")).toBeInTheDocument();
+  });
+
+  it("splits PE Development KPIs into Critical and Standard rows that filter by tag", async () => {
+    const user = userEvent.setup();
+    const peDashboard = mapFixtureWorkspace({
+      slug: "pe-delivery",
+      name: "PE Development",
+      description: "Promo engine delivery priorities tracked manually by the team.",
+      projects: [],
+    });
+    const statusNamed = (name: string) => {
+      const status = peDashboard.statuses.find((candidate) => candidate.name === name);
+      if (!status) throw new Error(`missing fixture status ${name}`);
+      return { statusId: status.id, statusName: status.name, statusColor: status.color };
+    };
+    const make = (id: string, title: string, statusName: string, critical: boolean) => ({
+      ...dashboard.projects[0],
+      ...statusNamed(statusName),
+      id,
+      title,
+      subtasks: [],
+      ...(critical ? { projectTier: "critical" as const } : {}),
+    });
+    render(
+      <DashboardShell
+        initialDashboard={{
+          ...peDashboard,
+          projects: [
+            make("c1", "Critical build", "Development", true),
+            make("s1", "Standard build", "Development", false),
+            make("s2", "Standard hold", "On Hold", false),
+          ],
+        }}
+        source="fixture"
+      />,
+    );
+
+    const overview = screen.getByRole("region", { name: "Workspace status overview" });
+    const critical = within(overview).getByRole("region", { name: "Critical Projects" });
+    const standard = within(overview).getByRole("region", { name: "Standard Projects" });
+    expect(within(critical).getAllByRole("button").map((button) =>
+      button.querySelector(".kpi-label")?.textContent)).toEqual([
+      "Projects / CRS",
+      "Planning",
+      "Development",
+      "Upcoming Delivery",
+      "Testing",
+      "Live",
+      "Delayed",
+      "On Hold",
+    ]);
+    const count = (row: HTMLElement, label: RegExp) =>
+      within(row).getByRole("button", { name: label }).querySelector(".kpi-value")?.textContent;
+    expect(count(critical, /^Projects \/ CRS/)).toBe("1");
+    expect(count(critical, /^Development/)).toBe("1");
+    expect(count(critical, /^On Hold/)).toBe("0");
+    expect(count(standard, /^Projects \/ CRS/)).toBe("2");
+    expect(count(standard, /^Development/)).toBe("1");
+    expect(count(standard, /^On Hold/)).toBe("1");
+
+    await user.click(within(critical).getByRole("button", { name: /^Development/ }));
+    expect(within(critical).getByRole("button", { name: /^Development/ }))
+      .toHaveAttribute("aria-pressed", "true");
+    expect(within(standard).getByRole("button", { name: /^Development/ }))
+      .toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByText("1 visible")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View Critical build details" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "View Standard build details" })).not.toBeInTheDocument();
+
+    const statusFilters = screen.getByLabelText("Filter projects by status");
+    await user.click(within(statusFilters).getByRole("button", { name: "On Hold" }));
+    expect(screen.getByText("0 visible")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Clear Critical projects filter" }));
+    expect(screen.getByText("1 visible")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View Standard hold details" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Clear Critical projects filter" })).not.toBeInTheDocument();
+
+    await user.click(within(standard).getByRole("button", { name: /^Projects \/ CRS/ }));
+    expect(screen.getByText("2 visible")).toBeInTheDocument();
+    await user.click(within(standard).getByRole("button", { name: /^Projects \/ CRS/ }));
+    expect(screen.getByText("3 visible")).toBeInTheDocument();
   });
 
   it("shows Action Owner on PE Development cards", () => {

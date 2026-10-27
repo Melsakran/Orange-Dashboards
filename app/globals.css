@@ -395,6 +395,27 @@ h1 {
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 }
 
+.kpi-rows {
+  margin-bottom: 32px;
+}
+
+.kpi-row + .kpi-row {
+  margin-top: 22px;
+}
+
+.kpi-row-title {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.kpi-row .kpi-grid {
+  margin-bottom: 0;
+}
+
+.filter-tag-chip {
+  border-style: dashed;
+}
+
 .kpi-card {
   position: relative;
   overflow: hidden;

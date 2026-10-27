@@ -223,6 +223,28 @@ describe("admin dashboard controls", () => {
     );
   });
 
+  it("offers a Project type select for PE Development projects but not subtasks", async () => {
+    const user = userEvent.setup();
+    const peDashboard = {
+      ...dashboard,
+      slug: "pe-delivery",
+      name: "PE Development",
+    };
+    realtimeState.data = peDashboard;
+    render(<DashboardShell initialDashboard={peDashboard} source="database" isAdmin />);
+
+    await user.click(screen.getByRole("button", { name: "New Project" }));
+    const projectDialog = screen.getByRole("dialog", { name: "New project" });
+    expect(within(projectDialog).getByLabelText("Project type")).toHaveValue("standard");
+    await user.click(within(projectDialog).getByRole("button", { name: "Close project form" }));
+
+    await user.click(screen.getByRole("button", { name: /view existing project details/i }));
+    const details = screen.getByRole("dialog", { name: "Existing project" });
+    await user.click(within(details).getByRole("button", { name: "Add subtask" }));
+    const subtaskDialog = screen.getByRole("dialog", { name: /new subtask/i });
+    expect(within(subtaskDialog).queryByLabelText("Project type")).not.toBeInTheDocument();
+  });
+
   it("rolls a failed deletion back and offers retry", async () => {
     const user = userEvent.setup();
     mutationMocks.deleteWorkItem.mockRejectedValueOnce(new Error("network unavailable"));

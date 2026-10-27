@@ -14,10 +14,12 @@ import type { DashboardSource } from "@/lib/data/initial-dashboard";
 import {
   aggregateKpis,
   projectMatchesStatusFilter,
+  projectTierOf,
   type DashboardComment,
   type DashboardProject,
   type DashboardViewModel,
   type DashboardWorkItem,
+  type ProjectTier,
 } from "@/lib/data/dashboard";
 import {
   allFilterLabel,
@@ -60,6 +62,11 @@ import { PeDeliveryNotes } from "./pe-delivery-notes";
 import { ProjectCard } from "./project-card";
 import { ProjectDetailsModal } from "./project-details-modal";
 import { StatusFilters, type StatusFilter } from "./status-filters";
+
+const PROJECT_TIER_ROWS: ReadonlyArray<{ tier: ProjectTier; title: string; chip: string }> = [
+  { tier: "critical", title: "Critical Projects", chip: "Critical projects" },
+  { tier: "standard", title: "Standard Projects", chip: "Standard projects" },
+];
 
 interface DashboardShellProps {
   initialDashboard: DashboardViewModel;
@@ -184,6 +191,7 @@ function optimisticItem(
     ...(value.timeToMarketWd !== null && value.timeToMarketWd !== undefined
       ? { timeToMarketWd: value.timeToMarketWd }
       : {}),
+    ...(value.projectTier ? { projectTier: value.projectTier } : {}),
     ...(teamTracks?.length ? { teamTracks } : {}),
     sortOrder,
     updatedAt,
@@ -267,6 +275,7 @@ function EditorDialog({
             : isPeDeliveryWorkspace(dashboard.slug) ? "Deployment Date" : "End date"
         }
         deliveryFields={isPeDeliveryWorkspace(dashboard.slug)}
+        showProjectTier={isPeDeliveryWorkspace(dashboard.slug) && editor.kind === "project"}
         showProgress={!isDigitalStyleWorkspace(dashboard.slug)}
         showRelease={isDigitalStyleWorkspace(dashboard.slug)}
         useTeamTracks={usesTeamTracks(dashboard.slug)}
@@ -292,6 +301,7 @@ export function DashboardShell({
   const authoritativeRef = useRef(realtime.data);
   const mutationBusyRef = useRef(false);
   const [activeFilter, setActiveFilter] = useState<StatusFilter>("all");
+  const [tierFilter, setTierFilter] = useState<"all" | ProjectTier>("all");
   const [liveVariant, setLiveVariant] = useState<LiveVariantFilter>("live");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorState | null>(null);
@@ -752,6 +762,19 @@ export function DashboardShell({
     activeFilter === "all" || workspace.statuses.some((status) => status.id === activeFilter)
       ? activeFilter
       : "all";
+  const usesProjectTiers = isPeDeliveryWorkspace(workspace.slug);
+  const effectiveTier = usesProjectTiers ? tierFilter : "all";
+  const activeTierRow = PROJECT_TIER_ROWS.find((row) => row.tier === effectiveTier);
+
+  function selectTierKpi(tier: ProjectTier, filter: StatusFilter) {
+    if (effectiveTier === tier && effectiveFilter === filter) {
+      setTierFilter("all");
+      setActiveFilter("all");
+      return;
+    }
+    setTierFilter(tier);
+    setActiveFilter(filter);
+  }
 
   const liveStatus = useMemo(
     () => workspace.statuses.find((status) => status.name.trim().toLowerCase() === "live"),
@@ -767,10 +790,13 @@ export function DashboardShell({
       ? workspace.projects
       : workspace.projects.filter((project) =>
           projectMatchesStatusFilter(project, effectiveFilter));
+    const byTier = effectiveTier === "all"
+      ? byStatus
+      : byStatus.filter((project) => projectTierOf(project) === effectiveTier);
 
-    if (!isPeLiveFilter || !liveStatus) return byStatus;
+    if (!isPeLiveFilter || !liveStatus) return byTier;
 
-    return byStatus.filter((project) => {
+    return byTier.filter((project) => {
       const hasNonLiveChild = project.subtasks.some(
         (child) => child.statusId !== liveStatus.id,
       );
@@ -778,6 +804,7 @@ export function DashboardShell({
     });
   }, [
     effectiveFilter,
+    effectiveTier,
     isPeLiveFilter,
     liveStatus,
     liveVariant,
@@ -840,13 +867,29 @@ export function DashboardShell({
           </div>
         </header>
 
-        <KpiGrid
-          statuses={workspace.statuses}
-          projects={workspace.projects}
-          activeFilter={effectiveFilter}
-          onSelect={setActiveFilter}
-          allLabel={allFilterLabel(workspace.slug)}
-        />
+        {usesProjectTiers ? (
+          <div className="kpi-rows" role="region" aria-label="Workspace status overview">
+            {PROJECT_TIER_ROWS.map((row) => (
+              <KpiGrid
+                key={row.tier}
+                title={row.title}
+                statuses={workspace.statuses}
+                projects={workspace.projects.filter((project) => projectTierOf(project) === row.tier)}
+                activeFilter={effectiveTier === row.tier ? effectiveFilter : null}
+                onSelect={(filter) => selectTierKpi(row.tier, filter)}
+                allLabel={allFilterLabel(workspace.slug)}
+              />
+            ))}
+          </div>
+        ) : (
+          <KpiGrid
+            statuses={workspace.statuses}
+            projects={workspace.projects}
+            activeFilter={effectiveFilter}
+            onSelect={setActiveFilter}
+            allLabel={allFilterLabel(workspace.slug)}
+          />
+        )}
 
         {isPeDeliveryWorkspace(workspace.slug) ? <PeDeliveryNotes /> : null}
 
@@ -919,7 +962,19 @@ export function DashboardShell({
                 statuses={workspace.statuses}
                 onChange={setActiveFilter}
                 allLabel={allFilterLabel(workspace.slug)}
-              />
+              >
+                {activeTierRow ? (
+                  <button
+                    type="button"
+                    className="filter-button filter-tag-chip"
+                    data-active="true"
+                    aria-label={`Clear ${activeTierRow.chip} filter`}
+                    onClick={() => setTierFilter("all")}
+                  >
+                    {activeTierRow.chip} ×
+                  </button>
+                ) : null}
+              </StatusFilters>
               {visibleProjects.length ? (
                 <div className="projects-grid">
                   {visibleProjects.map((project) => (
