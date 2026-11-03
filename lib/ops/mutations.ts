@@ -16,6 +16,8 @@ export type OpsReplaceRow = {
   closure_comments: string;
   assigned_to: string;
   assigned_to_key: string;
+  request_type: string;
+  is_merge_request: boolean;
 };
 
 export function toReplaceRows(requests: OpsRequest[]): OpsReplaceRow[] {
@@ -33,6 +35,8 @@ export function toReplaceRows(requests: OpsRequest[]): OpsReplaceRow[] {
     closure_comments: request.closureComments,
     assigned_to: request.assignedTo,
     assigned_to_key: request.assignedToKey,
+    request_type: request.requestType,
+    is_merge_request: request.isMergeRequest,
   }));
 }
 

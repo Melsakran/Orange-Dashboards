@@ -2,12 +2,18 @@
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { normalizeRequests, parseSheetDate, REQUIRED_COLUMNS } from "@/lib/ops/normalize";
+import {
+  normalizeRequests,
+  OPTIONAL_COLUMNS,
+  parseSheetDate,
+  REQUIRED_COLUMNS,
+} from "@/lib/ops/normalize";
 import { parseCsv, tableToSheet } from "@/lib/sheets/parse-sheet";
 
-type Column = (typeof REQUIRED_COLUMNS)[number];
+type Column = (typeof REQUIRED_COLUMNS)[number] | (typeof OPTIONAL_COLUMNS)[number];
+const OLD_TEMPLATE: readonly Column[] = [...REQUIRED_COLUMNS, "Title", "Closure Comments"];
 
-const validRow: Record<Column, string> = {
+const validRow: Partial<Record<Column, string>> = {
   "Interaction ID": "SD1",
   Status: "Closed",
   "Assignment Time": "5/17/2026 13:50",
@@ -21,7 +27,7 @@ const validRow: Record<Column, string> = {
   "Assigned To": "helghandour",
 };
 
-function sheetOf(rows: Array<Partial<Record<Column, string>>>, columns: readonly string[] = REQUIRED_COLUMNS) {
+function sheetOf(rows: Array<Partial<Record<Column, string>>>, columns: readonly string[] = OLD_TEMPLATE) {
   return tableToSheet([
     [...columns],
     ...rows.map((row) => columns.map((column) => row[column as Column] ?? "")),
@@ -68,7 +74,58 @@ describe("normalizeRequests", () => {
       closureComments: "testing",
       assignedTo: "helghandour",
       assignedToKey: "helghandour",
+      requestType: "",
+      isMergeRequest: false,
     });
+  });
+
+  it("reads the new template and flags merge requests from Svc Options", () => {
+    const text = readFileSync(resolve(import.meta.dirname, "fixtures/ops-requests-merge-sample.csv"), "utf8");
+    const result = normalizeRequests(tableToSheet(parseCsv(text)));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.requests).toHaveLength(28);
+    expect(result.requests.filter((request) => request.isMergeRequest)).toHaveLength(17);
+    const types = new Map<string, number>();
+    result.requests.forEach((request) => types.set(request.requestType, (types.get(request.requestType) ?? 0) + 1));
+    expect(Object.fromEntries(types)).toEqual({
+      "Merge Request": 17,
+      "Report Recovery": 4,
+      "CVM View Deployment": 3,
+      "Model Recovery": 2,
+      "New Tables Sync": 1,
+      "CVM Plan Issue": 1,
+    });
+    expect(result.requests[0]).toMatchObject({
+      interactionId: "SD1307028",
+      status: "in_progress",
+      requestTitle: "new recharge field",
+      title: "",
+      closureComments: "",
+      assignedTo: "",
+      requestType: "Merge Request",
+      isMergeRequest: true,
+    });
+  });
+
+  it("flags only the Merge Request type and keeps the other type names", () => {
+    const form = (type: string) =>
+      `<form><select help="&lt;p>Request Type&lt;/p> " id="RequestType" label="&lt;p>Request Type&lt;/p>">${type}<option id="0">Merge Request</option></select></form>`;
+    const result = normalizeRequests(sheetOf(
+      [
+        { ...validRow, "Interaction ID": "SD1", "Svc Options": form("Merge Request") },
+        { ...validRow, "Interaction ID": "SD2", "Svc Options": form("Report Recovery") },
+        { ...validRow, "Interaction ID": "SD3", "Svc Options": "" },
+      ],
+      [...REQUIRED_COLUMNS, "Svc Options"],
+    ));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.requests.map((request) => [request.requestType, request.isMergeRequest])).toEqual([
+      ["Merge Request", true],
+      ["Report Recovery", false],
+      ["", false],
+    ]);
   });
 
   it("matches statuses without regard to case and lowercases person keys", () => {
@@ -118,7 +175,7 @@ describe("normalizeRequests", () => {
       columns,
       columns.map((column) => {
         const match = REQUIRED_COLUMNS.find((required) => required.toUpperCase() === column);
-        return match ? validRow[match as Column] : "ignored";
+        return match ? validRow[match as Column] ?? "" : "ignored";
       }),
     ];
     const result = normalizeRequests(tableToSheet(table));

@@ -28,6 +28,20 @@ export interface OpsRequest {
   closureComments: string;
   assignedTo: string;
   assignedToKey: string;
+  /** Request Type chosen in the service-desk form ("Svc Options"); empty for older exports. */
+  requestType: string;
+  isMergeRequest: boolean;
+}
+
+export type OpsRequestKind = "merge" | "other";
+
+export const OPS_REQUEST_KIND_LABELS: Record<OpsRequestKind, string> = {
+  merge: "Merge requests",
+  other: "Other requests",
+};
+
+export function requestKindOf(request: Pick<OpsRequest, "isMergeRequest">): OpsRequestKind {
+  return request.isMergeRequest ? "merge" : "other";
 }
 
 export interface OpsUpload {

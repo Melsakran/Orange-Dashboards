@@ -13,6 +13,7 @@ vi.mock("@/lib/supabase/client", () => ({ createClient: () => fakeClient }));
 vi.mock("@/lib/ops/mutations", () => ({ replaceOpsRequests }));
 
 const sampleCsv = readFileSync(resolve(import.meta.dirname, "fixtures/ops-requests-sample.csv"));
+const mergeCsv = readFileSync(resolve(import.meta.dirname, "fixtures/ops-requests-merge-sample.csv"));
 const emptyDataset = { requests: [], upload: null };
 
 function chooseFile() {
@@ -39,7 +40,7 @@ describe("Ops Requests upload", () => {
     await user.upload(chooseFile(), new File([sampleCsv], "export.csv", { type: "text/csv" }));
 
     const dialog = await screen.findByRole("dialog", { name: "export.csv" });
-    expect(dialog).toHaveTextContent("19 requests found — 0 open, 0 in progress, 0 pending, 19 closed");
+    expect(dialog).toHaveTextContent("19 requests found — 0 open, 0 in progress, 0 pending, 19 closed · 0 merge requests");
     expect(dialog).toHaveTextContent("Replacing will delete all current Ops Requests data");
 
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
@@ -118,6 +119,17 @@ describe("Ops Requests upload", () => {
     expect(items[59]).toHaveTextContent(/^Row 61 \(SD60\): Unrecognized status/);
   });
 
+  it("previews the new template with its merge request count", async () => {
+    const user = userEvent.setup();
+    render(<OpsRequestsView dataset={emptyDataset} isAdmin />);
+
+    await user.upload(chooseFile(), new File([mergeCsv], "export (22).csv", { type: "text/csv" }));
+    const dialog = await screen.findByRole("dialog", { name: "export (22).csv" });
+    expect(dialog).toHaveTextContent(
+      "28 requests found — 0 open, 2 in progress, 0 pending, 26 closed · 17 merge requests",
+    );
+  });
+
   it("lists validation problems and offers no way to save", async () => {
     const user = userEvent.setup();
     render(<OpsRequestsView dataset={emptyDataset} isAdmin />);
@@ -126,7 +138,7 @@ describe("Ops Requests upload", () => {
     await user.upload(chooseFile(), new File([csv], "partial.csv", { type: "text/csv" }));
     const dialog = await screen.findByRole("dialog", { name: "partial.csv" });
     expect(dialog).toHaveTextContent("This file can't be uploaded");
-    expect(dialog).toHaveTextContent("Missing columns: Assignment Time, Title");
+    expect(dialog).toHaveTextContent("Missing columns: Assignment Time, Request Title");
     expect(within(dialog).queryByRole("button", { name: "Replace data" })).not.toBeInTheDocument();
   });
 

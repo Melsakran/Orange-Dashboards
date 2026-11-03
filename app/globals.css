@@ -3023,3 +3023,15 @@ footer {
   padding-left: 18px;
   font-size: 13px;
 }
+
+.ops-merge-flag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f1eafe;
+  color: #6d28d9;
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}

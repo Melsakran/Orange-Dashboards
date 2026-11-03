@@ -56,10 +56,12 @@ function UploadReview({
   const breakdown = OPS_STATUSES
     .map((status) => `${counts[status]} ${OPS_STATUS_LABELS[status].toLowerCase()}`)
     .join(", ");
+  const mergeCount = result.requests.filter((request) => request.isMergeRequest).length;
   return (
     <>
       <p className="ops-upload-summary">
-        {result.requests.length} requests found — {breakdown}
+        {result.requests.length} requests found — {breakdown} · {mergeCount} merge{" "}
+        {mergeCount === 1 ? "request" : "requests"}
       </p>
       <p>Replacing will delete all current Ops Requests data and show only this file.</p>
       {saveError ? (

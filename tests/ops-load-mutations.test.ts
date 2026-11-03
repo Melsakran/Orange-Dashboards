@@ -22,6 +22,8 @@ function dbRow(id: string, overrides: Partial<Tables<"ops_requests">> = {}): Tab
     closure_comments: "Done",
     assigned_to: "helghandour",
     assigned_to_key: "helghandour",
+    request_type: "Merge Request",
+    is_merge_request: true,
     upload_id: "upload-1",
     ...overrides,
   };
@@ -121,6 +123,8 @@ describe("mapOpsRequestRow", () => {
       closureComments: "Done",
       assignedTo: "helghandour",
       assignedToKey: "helghandour",
+      requestType: "Merge Request",
+      isMergeRequest: true,
     });
   });
 });
@@ -128,7 +132,13 @@ describe("mapOpsRequestRow", () => {
 describe("replaceOpsRequests", () => {
   it("sends snake_case rows to the replace function", async () => {
     const rpc = vi.fn().mockResolvedValue({ data: "upload-2", error: null });
-    const request = makeOpsRequest({ interactionId: "SD7", closeDate: null, status: "open" });
+    const request = makeOpsRequest({
+      interactionId: "SD7",
+      closeDate: null,
+      status: "open",
+      requestType: "Merge Request",
+      isMergeRequest: true,
+    });
     const id = await replaceOpsRequests({ rpc } as unknown as SupabaseClient<Database>, "export.csv", [request]);
     expect(id).toBe("upload-2");
     expect(rpc).toHaveBeenCalledWith("replace_ops_requests", {
@@ -149,6 +159,8 @@ describe("replaceOpsRequests", () => {
       closure_comments: "",
       assigned_to: "HElGhandour",
       assigned_to_key: "helghandour",
+      request_type: "Merge Request",
+      is_merge_request: true,
     });
   });
 

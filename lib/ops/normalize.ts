@@ -1,19 +1,21 @@
 import { normalizeHeader, type RawSheet } from "@/lib/sheets/parse-sheet";
+import { isMergeRequestType, readRequestType } from "./svc-options";
 import { isOpsStatus, type OpsRequest } from "./types";
 
 export const REQUIRED_COLUMNS = [
   "Interaction ID",
   "Status",
   "Assignment Time",
-  "Title",
   "Request Title",
   "Description",
   "Requestor Name",
   "Close Date",
   "Closure Code",
-  "Closure Comments",
   "Assigned To",
 ] as const;
+
+/** Older exports carry Title and Closure Comments; the current template carries Svc Options instead. */
+export const OPTIONAL_COLUMNS = ["Title", "Closure Comments", "Svc Options"] as const;
 
 export interface RowError {
   rowNumber: number;
@@ -52,8 +54,9 @@ export function normalizeRequests(sheet: RawSheet): NormalizeResult {
   const seenIds = new Map<string, number>();
 
   for (const row of sheet.rows) {
-    const value = (column: (typeof REQUIRED_COLUMNS)[number]) =>
-      row.values[normalizeHeader(column)] ?? "";
+    const value = (
+      column: (typeof REQUIRED_COLUMNS)[number] | (typeof OPTIONAL_COLUMNS)[number],
+    ) => row.values[normalizeHeader(column)] ?? "";
     const interactionId = value("Interaction ID");
     const fail = (message: string) => {
       errors.push({ rowNumber: row.rowNumber, interactionId, message });
@@ -103,6 +106,7 @@ export function normalizeRequests(sheet: RawSheet): NormalizeResult {
 
     const requestorName = value("Requestor Name");
     const assignedTo = value("Assigned To");
+    const requestType = readRequestType(value("Svc Options"));
     requests.push({
       interactionId,
       status,
@@ -117,6 +121,8 @@ export function normalizeRequests(sheet: RawSheet): NormalizeResult {
       closureComments: value("Closure Comments"),
       assignedTo,
       assignedToKey: assignedTo.toLowerCase(),
+      requestType,
+      isMergeRequest: isMergeRequestType(requestType),
     });
   }
 

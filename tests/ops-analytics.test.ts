@@ -10,6 +10,7 @@ import {
   formatUploadedAt,
   formatWeekLabel,
   groupByPerson,
+  groupByRequestKind,
   HOUR_MS,
   resolutionMs,
   summarizeKpis,
@@ -45,6 +46,7 @@ describe("summarizeKpis", () => {
     expect(kpis).toEqual({
       total: 5,
       counts: { open: 1, in_progress: 0, pending: 1, closed: 3 },
+      kinds: { merge: 1, other: 4 },
       closureRate: 0.6,
       avgResolutionMs: (50.5 * HOUR_MS) / 3,
       medianResolutionMs: 2 * HOUR_MS,
@@ -139,17 +141,43 @@ describe("weeklyBuckets", () => {
   });
 });
 
+describe("groupByRequestKind", () => {
+  it("always lists merge requests and other requests with status counts and resolution", () => {
+    expect(groupByRequestKind(sampleRequests)).toEqual([
+      {
+        key: "merge",
+        name: "Merge requests",
+        total: 1,
+        counts: { open: 0, in_progress: 0, pending: 0, closed: 1 },
+        avgResolutionMs: 48 * HOUR_MS,
+        medianResolutionMs: 48 * HOUR_MS,
+      },
+      {
+        key: "other",
+        name: "Other requests",
+        total: 4,
+        counts: { open: 1, in_progress: 0, pending: 1, closed: 2 },
+        avgResolutionMs: 1.25 * HOUR_MS,
+        medianResolutionMs: 1.25 * HOUR_MS,
+      },
+    ]);
+    expect(groupByRequestKind([]).map((row) => row.total)).toEqual([0, 0]);
+  });
+});
+
 describe("filterRequests", () => {
-  it("filters by status and assignee and sorts newest first", () => {
-    expect(ids(filterRequests(sampleRequests, { status: "closed", assigneeKey: "all", query: "" })))
+  it("filters by status and request type and sorts newest first", () => {
+    expect(ids(filterRequests(sampleRequests, { status: "closed", kind: "all", query: "" })))
       .toEqual(["SD1003", "SD1002", "SD1001"]);
-    expect(ids(filterRequests(sampleRequests, { status: "all", assigneeKey: "helghandour", query: "" })))
-      .toEqual(["SD1002", "SD1001"]);
+    expect(ids(filterRequests(sampleRequests, { status: "all", kind: "merge", query: "" })))
+      .toEqual(["SD1002"]);
+    expect(ids(filterRequests(sampleRequests, { status: "closed", kind: "other", query: "" })))
+      .toEqual(["SD1003", "SD1001"]);
   });
 
   it("searches ID, titles, description, people, and comments without regard to case", () => {
     const search = (query: string) =>
-      ids(filterRequests(sampleRequests, { status: "all", assigneeKey: "all", query }));
+      ids(filterRequests(sampleRequests, { status: "all", kind: "all", query }));
     expect(search("kamel")).toEqual(["SD1003"]);
     expect(search("CUSTOMER LIST")).toEqual(["SD1004"]);
     expect(search("production")).toEqual(["SD1001"]);
@@ -159,7 +187,7 @@ describe("filterRequests", () => {
   it("does not search the Title column", () => {
     expect(filterRequests(
       [makeOpsRequest({ interactionId: "SD9", title: "New Task", requestTitle: "Report" })],
-      { status: "all", assigneeKey: "all", query: "new task" },
+      { status: "all", kind: "all", query: "new task" },
     )).toEqual([]);
   });
 });

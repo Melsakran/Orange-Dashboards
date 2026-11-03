@@ -40,8 +40,12 @@ describe("OpsRequestsView", () => {
     expect(within(overview).getByText("60%")).toBeInTheDocument();
 
     expect(screen.getByRole("region", { name: "Closure codes" })).toHaveTextContent("Successful");
-    const assignees = screen.getByRole("region", { name: "By assignee" });
-    expect(within(assignees).getByRole("row", { name: /HElGhandour/ })).toHaveTextContent("2");
+    expect(within(overview).getByRole("button", { name: /^Merge requests/ })).toHaveTextContent("1");
+    expect(within(overview).getByRole("button", { name: /^Other requests/ })).toHaveTextContent("4");
+    expect(screen.queryByRole("region", { name: "By assignee" })).not.toBeInTheDocument();
+    const types = screen.getByRole("region", { name: "By request type" });
+    expect(within(types).getByRole("row", { name: /^Merge requests/ })).toHaveTextContent("1");
+    expect(within(types).getByRole("row", { name: /^Other requests/ })).toHaveTextContent("4");
     expect(screen.getByRole("region", { name: "By requestor" })).toHaveTextContent("NFawzy");
     expect(screen.getByRole("listitem", { name: "Week of May 4: 2 assigned, 2 closed" })).toBeInTheDocument();
 
@@ -63,16 +67,32 @@ describe("OpsRequestsView", () => {
     expect(visibleIds()).toHaveLength(5);
   });
 
-  it("searches and filters by assignee", async () => {
+  it("filters by merge request from the KPI cards and the request type filter", async () => {
+    const user = userEvent.setup();
+    render(<OpsRequestsView dataset={dataset} isAdmin={false} />);
+    expect(screen.queryByLabelText("Assignee")).not.toBeInTheDocument();
+    const merge = screen.getByRole("button", { name: /^Merge requests/ });
+
+    await user.click(merge);
+    expect(merge).toHaveAttribute("aria-pressed", "true");
+    expect(visibleIds()).toEqual(["SD1002"]);
+    expect(screen.getByLabelText("Request type")).toHaveValue("merge");
+    expect(screen.getByRole("row", { name: /SD1002/ })).toHaveTextContent("Merge request");
+
+    await user.click(merge);
+    expect(visibleIds()).toHaveLength(5);
+
+    await user.selectOptions(screen.getByLabelText("Request type"), "other");
+    expect(visibleIds()).toEqual(["SD1005", "SD1004", "SD1003", "SD1001"]);
+    expect(screen.getByRole("button", { name: /^Other requests/ })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("searches requests", async () => {
     const user = userEvent.setup();
     render(<OpsRequestsView dataset={dataset} isAdmin={false} />);
 
     await user.type(screen.getByLabelText("Search"), "quota");
     expect(visibleIds()).toEqual(["SD1004"]);
-
-    await user.clear(screen.getByLabelText("Search"));
-    await user.selectOptions(screen.getByLabelText("Assignee"), "helghandour");
-    expect(visibleIds()).toEqual(["SD1002", "SD1001"]);
 
     await user.type(screen.getByLabelText("Search"), "nothing matches");
     expect(screen.getByText("No requests match these filters.")).toBeInTheDocument();
@@ -86,6 +106,7 @@ describe("OpsRequestsView", () => {
     const dialog = screen.getByRole("dialog", { name: "Quota offer" });
     expect(dialog).toHaveTextContent("Double quota for the attached customer list");
     expect(dialog).toHaveTextContent("rshalim");
+    expect(within(dialog).getByText("Request type").nextElementSibling).toHaveTextContent("Report Recovery");
 
     await user.click(within(dialog).getByRole("button", { name: "Close request details" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

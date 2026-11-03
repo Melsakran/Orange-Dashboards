@@ -87,6 +87,7 @@ describe("ops requests database", () => {
     `);
     await db.exec(read("supabase/migrations/0033_ops_requests.sql"));
     await db.exec(read("supabase/migrations/0037_ops_in_progress_status.sql"));
+    await db.exec(read("supabase/migrations/0040_ops_merge_requests.sql"));
     await db.exec(`
       insert into auth.users (id) values ('${ADMIN_ID}'), ('${USER_ID}');
       insert into public.admin_users (auth_user_id, email, display_name)
@@ -161,6 +162,21 @@ describe("ops requests database", () => {
       () => replace(db, "bad.csv", [row("SD2", { status: "resolved" })]),
       /ops_requests_status_check/,
     );
+  });
+
+  it("stores the request type and merge flag, defaulting both for older payloads", async () => {
+    await setIdentity(db, "authenticated", ADMIN_ID);
+    await replace(db, "wk45.csv", [
+      row("SD1", { request_type: "Merge Request", is_merge_request: true }),
+      row("SD2"),
+    ]);
+    const stored = await db.query<{ interaction_id: string; request_type: string; is_merge_request: boolean }>(
+      "select interaction_id, request_type, is_merge_request from public.ops_requests order by interaction_id",
+    );
+    expect(stored.rows).toEqual([
+      { interaction_id: "SD1", request_type: "Merge Request", is_merge_request: true },
+      { interaction_id: "SD2", request_type: "", is_merge_request: false },
+    ]);
   });
 
   it("keeps the previous rows when a replace fails", async () => {

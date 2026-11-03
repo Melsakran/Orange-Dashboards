@@ -10,11 +10,13 @@ function PersonTable({
   id,
   rows,
   showResolution,
+  nameHeader = "Name",
 }: {
   title: string;
   id: string;
   rows: PersonRow[];
   showResolution: boolean;
+  nameHeader?: string;
 }) {
   return (
     <section className="ops-panel" aria-labelledby={id}>
@@ -23,7 +25,7 @@ function PersonTable({
         <table className="ops-table">
           <thead>
             <tr>
-              <th scope="col">Name</th>
+              <th scope="col">{nameHeader}</th>
               <th scope="col" className="ops-number">Total</th>
               <th scope="col" className="ops-number">Open</th>
               <th scope="col" className="ops-number">In progress</th>
@@ -63,11 +65,11 @@ function PersonTable({
 
 export function OpsBreakdowns({
   closureCodes,
-  assignees,
+  requestKinds,
   requestors,
 }: {
   closureCodes: ClosureCodeRow[];
-  assignees: PersonRow[];
+  requestKinds: PersonRow[];
   requestors: PersonRow[];
 }) {
   return (
@@ -88,7 +90,13 @@ export function OpsBreakdowns({
           ))}
         </ul>
       </section>
-      <PersonTable title="By assignee" id="ops-assignee-title" rows={assignees} showResolution />
+      <PersonTable
+        title="By request type"
+        id="ops-request-type-title"
+        rows={requestKinds}
+        nameHeader="Type"
+        showResolution
+      />
       <PersonTable title="By requestor" id="ops-requestor-title" rows={requestors} showResolution={false} />
     </div>
   );

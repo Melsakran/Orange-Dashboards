@@ -7,14 +7,20 @@ import {
   formatDuration,
   formatTimestamp,
   resolutionMs,
+  type OpsKindFilter,
   type OpsStatusFilter,
-  type PersonRow,
 } from "@/lib/ops/analytics";
-import { OPS_STATUSES, OPS_STATUS_LABELS, type OpsRequest } from "@/lib/ops/types";
+import {
+  OPS_REQUEST_KIND_LABELS,
+  OPS_STATUSES,
+  OPS_STATUS_LABELS,
+  type OpsRequest,
+} from "@/lib/ops/types";
 
 function OpsRequestDetails({ request, onClose }: { request: OpsRequest; onClose: () => void }) {
   const fields: Array<[string, string]> = [
     ["Status", OPS_STATUS_LABELS[request.status]],
+    ["Request type", request.requestType],
     ["Title", request.title],
     ["Requestor", request.requestorName],
     ["Assigned to", request.assignedTo],
@@ -50,23 +56,24 @@ function OpsRequestDetails({ request, onClose }: { request: OpsRequest; onClose:
 
 export function OpsTicketList({
   requests,
-  assignees,
   statusFilter,
   onStatusFilterChange,
+  kindFilter,
+  onKindFilterChange,
 }: {
   requests: OpsRequest[];
-  assignees: PersonRow[];
   statusFilter: OpsStatusFilter;
   onStatusFilterChange: (filter: OpsStatusFilter) => void;
+  kindFilter: OpsKindFilter;
+  onKindFilterChange: (filter: OpsKindFilter) => void;
 }) {
   const [query, setQuery] = useState("");
-  const [assigneeKey, setAssigneeKey] = useState("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const closeDetails = useCallback(() => setSelectedId(null), []);
 
   const visible = useMemo(
-    () => filterRequests(requests, { status: statusFilter, assigneeKey, query }),
-    [assigneeKey, query, requests, statusFilter],
+    () => filterRequests(requests, { status: statusFilter, kind: kindFilter, query }),
+    [kindFilter, query, requests, statusFilter],
   );
   const selected = requests.find((request) => request.interactionId === selectedId) ?? null;
 
@@ -99,12 +106,14 @@ export function OpsTicketList({
           </select>
         </label>
         <label className="form-field">
-          <span>Assignee</span>
-          <select value={assigneeKey} onChange={(event) => setAssigneeKey(event.target.value)}>
-            <option value="all">All assignees</option>
-            {assignees.map((assignee) => (
-              <option key={assignee.key} value={assignee.key}>{assignee.name}</option>
-            ))}
+          <span>Request type</span>
+          <select
+            value={kindFilter}
+            onChange={(event) => onKindFilterChange(event.target.value as OpsKindFilter)}
+          >
+            <option value="all">All request types</option>
+            <option value="merge">{OPS_REQUEST_KIND_LABELS.merge}</option>
+            <option value="other">{OPS_REQUEST_KIND_LABELS.other}</option>
           </select>
         </label>
       </div>
@@ -136,7 +145,12 @@ export function OpsTicketList({
                       {request.interactionId}
                     </button>
                   </td>
-                  <td>{request.requestTitle || "—"}</td>
+                  <td>
+                    {request.requestTitle || "—"}
+                    {request.isMergeRequest ? (
+                      <span className="ops-merge-flag">Merge request</span>
+                    ) : null}
+                  </td>
                   <td>
                     <span className={`ops-status ops-status-${request.status}`}>
                       {OPS_STATUS_LABELS[request.status]}

@@ -6,9 +6,11 @@ import {
   breakdownByClosureCode,
   formatUploadedAt,
   groupByPerson,
+  groupByRequestKind,
   summarizeKpis,
   wallClockNow,
   weeklyBuckets,
+  type OpsKindFilter,
   type OpsStatusFilter,
 } from "@/lib/ops/analytics";
 import type { OpsDataset } from "@/lib/ops/types";
@@ -54,12 +56,13 @@ export function OpsRequestsView({
   const { requests } = dataset;
   const nowMs = useSyncExternalStore(subscribeToNow, getClientNow, getServerNow);
   const [statusFilter, setStatusFilter] = useState<OpsStatusFilter>("all");
+  const [kindFilter, setKindFilter] = useState<OpsKindFilter>("all");
   const router = useRouter();
   const refresh = useCallback(() => router.refresh(), [router]);
 
   const kpis = useMemo(() => summarizeKpis(requests, nowMs), [nowMs, requests]);
   const closureCodes = useMemo(() => breakdownByClosureCode(requests), [requests]);
-  const assignees = useMemo(() => groupByPerson(requests, "assignee"), [requests]);
+  const requestKinds = useMemo(() => groupByRequestKind(requests), [requests]);
   const requestors = useMemo(() => groupByPerson(requests, "requestor"), [requests]);
   const weeks = useMemo(() => weeklyBuckets(requests), [requests]);
 
@@ -81,14 +84,21 @@ export function OpsRequestsView({
         </div>
       ) : requests.length ? (
         <>
-          <OpsKpis kpis={kpis} statusFilter={statusFilter} onStatusFilterChange={setStatusFilter} />
-          <OpsTimeline weeks={weeks} />
-          <OpsBreakdowns closureCodes={closureCodes} assignees={assignees} requestors={requestors} />
-          <OpsTicketList
-            requests={requests}
-            assignees={assignees}
+          <OpsKpis
+            kpis={kpis}
             statusFilter={statusFilter}
             onStatusFilterChange={setStatusFilter}
+            kindFilter={kindFilter}
+            onKindFilterChange={setKindFilter}
+          />
+          <OpsTimeline weeks={weeks} />
+          <OpsBreakdowns closureCodes={closureCodes} requestKinds={requestKinds} requestors={requestors} />
+          <OpsTicketList
+            requests={requests}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            kindFilter={kindFilter}
+            onKindFilterChange={setKindFilter}
           />
         </>
       ) : (

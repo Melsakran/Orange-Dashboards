@@ -15,6 +15,8 @@ export function makeOpsRequest(overrides: Partial<OpsRequest> = {}): OpsRequest 
     closureComments: "",
     assignedTo: "HElGhandour",
     assignedToKey: "helghandour",
+    requestType: "",
+    isMergeRequest: false,
     ...overrides,
   };
 }
@@ -30,6 +32,8 @@ export const sampleRequests: OpsRequest[] = [
   makeOpsRequest({
     interactionId: "SD1002",
     requestTitle: "Merge request 2401",
+    requestType: "Merge Request",
+    isMergeRequest: true,
     assignmentTime: "2026-05-05T09:00:00",
     closeDate: "2026-05-07T09:00:00",
     requestorName: "nfawzy",
@@ -50,6 +54,7 @@ export const sampleRequests: OpsRequest[] = [
     interactionId: "SD1004",
     status: "open",
     requestTitle: "Quota offer",
+    requestType: "Report Recovery",
     description: "Double quota for the attached customer list",
     assignmentTime: "2026-05-13T08:00:00",
     closeDate: null,

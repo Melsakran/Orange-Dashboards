@@ -25,6 +25,8 @@ export function mapOpsRequestRow(row: Tables<"ops_requests">): OpsRequest {
     closureComments: row.closure_comments,
     assignedTo: row.assigned_to,
     assignedToKey: row.assigned_to_key,
+    requestType: row.request_type,
+    isMergeRequest: row.is_merge_request,
   };
 }
 

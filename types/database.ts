@@ -506,7 +506,9 @@ export type Database = {
           description: string;
           id: string;
           interaction_id: string;
+          is_merge_request: boolean;
           request_title: string;
+          request_type: string;
           requestor_key: string;
           requestor_name: string;
           status: string;
@@ -523,7 +525,9 @@ export type Database = {
           description?: string;
           id?: string;
           interaction_id: string;
+          is_merge_request?: boolean;
           request_title?: string;
+          request_type?: string;
           requestor_key?: string;
           requestor_name?: string;
           status: string;
@@ -540,7 +544,9 @@ export type Database = {
           description?: string;
           id?: string;
           interaction_id?: string;
+          is_merge_request?: boolean;
           request_title?: string;
+          request_type?: string;
           requestor_key?: string;
           requestor_name?: string;
           status?: string;
