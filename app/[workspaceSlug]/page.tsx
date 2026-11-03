@@ -8,11 +8,15 @@ import {
   mapFixtureWorkspace,
   resolveInitialDashboard,
 } from "@/lib/data/initial-dashboard";
+import { hasRequestsView } from "@/lib/dashboard/workspace-style";
+import { loadOpsDataset } from "@/lib/ops/load";
+import type { OpsDataset } from "@/lib/ops/types";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabasePublicEnv } from "@/lib/supabase/env";
 
 interface WorkspacePageProps {
   params: Promise<{ workspaceSlug: string }>;
+  searchParams: Promise<{ view?: string | string[] }>;
 }
 
 // Access controls are derived from the current request's Supabase session.
@@ -28,8 +32,21 @@ export async function generateMetadata({ params }: WorkspacePageProps): Promise<
   return { title: workspace?.name ?? "Workspace not found" };
 }
 
-export default async function WorkspacePage({ params }: WorkspacePageProps) {
+async function loadRequests(isAdmin: boolean) {
+  const client = hasSupabasePublicEnv() ? await createClient() : null;
+  let dataset: OpsDataset = { requests: [], upload: null };
+  let loadError: string | null = null;
+  try {
+    dataset = await loadOpsDataset(client);
+  } catch (error) {
+    loadError = error instanceof Error ? error.message : "Could not load Ops Requests.";
+  }
+  return { dataset, loadError, isAdmin };
+}
+
+export default async function WorkspacePage({ params, searchParams }: WorkspacePageProps) {
   const { workspaceSlug } = await params;
+  const { view } = await searchParams;
   const result = await resolveInitialDashboard(workspaceSlug, {
     envConfigured: hasSupabasePublicEnv(),
     createClient,
@@ -49,12 +66,18 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
     adminEmail = data.user?.email;
   }
 
+  const requests = hasRequestsView(workspaceSlug)
+    ? await loadRequests(result.isAdmin && result.source === "database")
+    : undefined;
+
   return (
     <DashboardShell
       initialDashboard={result.dashboard}
       source={result.source}
       isAdmin={result.isAdmin}
       adminEmail={adminEmail}
+      requests={requests}
+      initialView={requests && view === "requests" ? "requests" : "projects"}
     />
   );
 }

@@ -1,8 +1,9 @@
+import { SegmentedToggle } from "@/components/ui/segmented-toggle";
 import type { ProjectTier } from "@/lib/data/dashboard";
 
-const OPTIONS: ReadonlyArray<{ tier: ProjectTier; label: string }> = [
-  { tier: "critical", label: "Critical Projects" },
-  { tier: "standard", label: "Standard Projects" },
+const OPTIONS: ReadonlyArray<{ value: ProjectTier; label: string }> = [
+  { value: "critical", label: "Critical Projects" },
+  { value: "standard", label: "Standard Projects" },
 ];
 
 export function ProjectTierToggle({
@@ -12,20 +13,5 @@ export function ProjectTierToggle({
   value: ProjectTier;
   onChange: (tier: ProjectTier) => void;
 }) {
-  return (
-    <div className="tier-toggle" role="group" aria-label="Project type">
-      {OPTIONS.map((option) => (
-        <button
-          key={option.tier}
-          type="button"
-          className="tier-toggle-option"
-          aria-pressed={value === option.tier}
-          data-active={value === option.tier}
-          onClick={() => onChange(option.tier)}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
-  );
+  return <SegmentedToggle label="Project type" options={OPTIONS} value={value} onChange={onChange} />;
 }

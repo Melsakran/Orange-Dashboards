@@ -2536,7 +2536,18 @@ footer {
   }
 }
 
-.ops-page .kpi-grid-status {
+.ops-requests-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.ops-requests-meta .workspace-description {
+  margin: 0;
+}
+
+.ops-requests-view .kpi-grid-status {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 

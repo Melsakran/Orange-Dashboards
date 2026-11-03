@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { OpsRequestsPage } from "@/components/ops/ops-requests-page";
+import { OpsRequestsView } from "@/components/ops/ops-requests-view";
 
 const refresh = vi.hoisted(() => vi.fn());
 const replaceOpsRequests = vi.hoisted(() => vi.fn());
@@ -26,15 +26,15 @@ describe("Ops Requests upload", () => {
   });
 
   it("shows Upload only to admins", () => {
-    const { rerender } = render(<OpsRequestsPage dataset={emptyDataset} isAdmin={false} />);
+    const { rerender } = render(<OpsRequestsView dataset={emptyDataset} isAdmin={false} />);
     expect(screen.queryByRole("button", { name: "Upload" })).not.toBeInTheDocument();
-    rerender(<OpsRequestsPage dataset={emptyDataset} isAdmin />);
+    rerender(<OpsRequestsView dataset={emptyDataset} isAdmin />);
     expect(screen.getByRole("button", { name: "Upload" })).toBeInTheDocument();
   });
 
   it("previews a valid file and cancels without saving", async () => {
     const user = userEvent.setup();
-    render(<OpsRequestsPage dataset={emptyDataset} isAdmin />);
+    render(<OpsRequestsView dataset={emptyDataset} isAdmin />);
 
     await user.upload(chooseFile(), new File([sampleCsv], "export.csv", { type: "text/csv" }));
 
@@ -49,7 +49,7 @@ describe("Ops Requests upload", () => {
 
   it("replaces the data and refreshes the page", async () => {
     const user = userEvent.setup();
-    render(<OpsRequestsPage dataset={emptyDataset} isAdmin />);
+    render(<OpsRequestsView dataset={emptyDataset} isAdmin />);
 
     await user.upload(chooseFile(), new File([sampleCsv], "export.csv", { type: "text/csv" }));
     const dialog = await screen.findByRole("dialog", { name: "export.csv" });
@@ -64,7 +64,7 @@ describe("Ops Requests upload", () => {
   it("keeps the dialog open with Retry when saving fails", async () => {
     const user = userEvent.setup();
     replaceOpsRequests.mockRejectedValueOnce(new Error("Upload failed: timeout"));
-    render(<OpsRequestsPage dataset={emptyDataset} isAdmin />);
+    render(<OpsRequestsView dataset={emptyDataset} isAdmin />);
 
     await user.upload(chooseFile(), new File([sampleCsv], "export.csv", { type: "text/csv" }));
     const dialog = await screen.findByRole("dialog", { name: "export.csv" });
@@ -84,7 +84,7 @@ describe("Ops Requests upload", () => {
         finishSave = resolve;
       }),
     );
-    render(<OpsRequestsPage dataset={emptyDataset} isAdmin />);
+    render(<OpsRequestsView dataset={emptyDataset} isAdmin />);
 
     await user.upload(chooseFile(), new File([sampleCsv], "export.csv", { type: "text/csv" }));
     const dialog = await screen.findByRole("dialog", { name: "export.csv" });
@@ -99,7 +99,7 @@ describe("Ops Requests upload", () => {
 
   it("lists every failing row", async () => {
     const user = userEvent.setup();
-    render(<OpsRequestsPage dataset={emptyDataset} isAdmin />);
+    render(<OpsRequestsView dataset={emptyDataset} isAdmin />);
     const header =
       "Interaction ID,Status,Assignment Time,Title,Request Title,Description,Requestor Name,Close Date,Closure Code,Closure Comments,Assigned To";
     const rows = Array.from(
@@ -120,7 +120,7 @@ describe("Ops Requests upload", () => {
 
   it("lists validation problems and offers no way to save", async () => {
     const user = userEvent.setup();
-    render(<OpsRequestsPage dataset={emptyDataset} isAdmin />);
+    render(<OpsRequestsView dataset={emptyDataset} isAdmin />);
     const csv = "Interaction ID,Status\nSD1,Open\n";
 
     await user.upload(chooseFile(), new File([csv], "partial.csv", { type: "text/csv" }));
@@ -132,7 +132,7 @@ describe("Ops Requests upload", () => {
 
   it("rejects a file with headers but no requests", async () => {
     const user = userEvent.setup();
-    render(<OpsRequestsPage dataset={emptyDataset} isAdmin />);
+    render(<OpsRequestsView dataset={emptyDataset} isAdmin />);
     const csv =
       "Interaction ID,Status,Assignment Time,Title,Request Title,Description,Requestor Name,Close Date,Closure Code,Closure Comments,Assigned To\n";
 
@@ -145,7 +145,7 @@ describe("Ops Requests upload", () => {
 
   it("rejects a CSV with an unclosed quote", async () => {
     const user = userEvent.setup();
-    render(<OpsRequestsPage dataset={emptyDataset} isAdmin />);
+    render(<OpsRequestsView dataset={emptyDataset} isAdmin />);
 
     await user.upload(chooseFile(), new File(['id,desc\n1,"open'], "quote.csv", { type: "text/csv" }));
     const dialog = await screen.findByRole("dialog", { name: "quote.csv" });
@@ -155,7 +155,7 @@ describe("Ops Requests upload", () => {
 
   it("rejects unsupported file types", async () => {
     const user = userEvent.setup({ applyAccept: false });
-    render(<OpsRequestsPage dataset={emptyDataset} isAdmin />);
+    render(<OpsRequestsView dataset={emptyDataset} isAdmin />);
 
     await user.upload(chooseFile(), new File(["hello"], "notes.txt", { type: "text/plain" }));
     const dialog = await screen.findByRole("dialog", { name: "notes.txt" });

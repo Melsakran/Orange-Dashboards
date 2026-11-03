@@ -20,6 +20,11 @@ export function allFilterLabel(slug: string): string {
   return "All Projects";
 }
 
+/** Workspaces with a Projects / Requests toggle that embeds the Ops Requests view. */
+export function hasRequestsView(slug: string): boolean {
+  return slug === "datalake-ops";
+}
+
 /** PE Development manual workspace (effort notes below KPIs). */
 export function isPeDeliveryWorkspace(slug: string): boolean {
   return slug === "pe-delivery";

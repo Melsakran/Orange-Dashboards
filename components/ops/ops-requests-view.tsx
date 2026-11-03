@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { BrandMark } from "@/components/ui/brand-mark";
 import {
   breakdownByClosureCode,
   formatUploadedAt,
@@ -41,14 +40,16 @@ function uploadSummary(dataset: OpsDataset) {
   return `Last updated ${formatUploadedAt(upload.uploadedAt)}${by} · ${upload.rowCount} requests`;
 }
 
-export function OpsRequestsPage({
+export function OpsRequestsView({
   dataset,
   isAdmin,
   loadError = null,
+  toolbar,
 }: {
   dataset: OpsDataset;
   isAdmin: boolean;
   loadError?: string | null;
+  toolbar?: ReactNode;
 }) {
   const { requests } = dataset;
   const nowMs = useSyncExternalStore(subscribeToNow, getClientNow, getServerNow);
@@ -63,22 +64,16 @@ export function OpsRequestsPage({
   const weeks = useMemo(() => weeklyBuckets(requests), [requests]);
 
   return (
-    <main className="dashboard ops-page">
-      <header className="dashboard-header">
-        <div className="brand-lockup">
-          <p className="eyebrow">Service desk</p>
-          <div className="brand-title-row">
-            <BrandMark />
-            <h1>Ops Requests</h1>
-          </div>
+    <div className="ops-requests-view">
+      <div className="kpi-row-header">
+        {toolbar}
+        <div className="ops-requests-meta">
           <p className="workspace-description">
             {loadError ? "Couldn't load the latest data" : uploadSummary(dataset)}
           </p>
-        </div>
-        <div className="header-tools">
           {isAdmin ? <OpsUpload onUploaded={refresh} /> : null}
         </div>
-      </header>
+      </div>
 
       {loadError ? (
         <div className="mutation-notice" role="alert">
@@ -101,11 +96,11 @@ export function OpsRequestsPage({
           <p className="view-state-title">No data uploaded yet</p>
           <p>
             {isAdmin
-              ? "Use Upload at the top of the page to add a service-desk export."
+              ? "Use Upload above to add a service-desk export."
               : "An admin hasn't uploaded a service-desk export yet."}
           </p>
         </section>
       )}
-    </main>
+    </div>
   );
 }

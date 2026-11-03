@@ -4,11 +4,12 @@ import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/view-states";
 import type { Workspace } from "@/data/workspaces";
 import { mapFixtureWorkspace } from "@/lib/data/initial-dashboard";
+import { sampleRequests } from "./fixtures/ops-requests";
 
 const pushMock = vi.hoisted(() => vi.fn());
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: pushMock }),
+  useRouter: () => ({ push: pushMock, refresh: vi.fn() }),
 }));
 
 const workspace: Workspace = {
@@ -321,6 +322,75 @@ describe("DashboardShell", () => {
     const filters = screen.getByLabelText("Filter projects by status");
     expect(within(filters).getByRole("button", { name: "All Tasks" })).toBeInTheDocument();
     expect(within(filters).getByRole("button", { name: "Deployments" })).toBeInTheDocument();
+  });
+
+  describe("Data Lake Operations Projects / Requests toggle", () => {
+    const datalakeDashboard = mapFixtureWorkspace({
+      slug: "datalake-ops",
+      name: "Data Lake Operations",
+      description: "Data lake operations priorities tracked manually by the team.",
+      projects: [],
+    });
+    const requests = {
+      dataset: {
+        requests: sampleRequests,
+        upload: {
+          uploadedAt: "2026-10-22T07:45:00Z",
+          uploadedByEmail: "admin@example.com",
+          fileName: "export.csv",
+          rowCount: 5,
+        },
+      },
+      loadError: null,
+      isAdmin: false,
+    };
+
+    beforeEach(() => {
+      window.history.replaceState(null, "", "/datalake-ops");
+    });
+
+    it("opens on Projects and switches to Requests, updating the link", async () => {
+      const user = userEvent.setup();
+      render(<DashboardShell initialDashboard={datalakeDashboard} source="fixture" requests={requests} />);
+
+      const viewButton = (name: string) =>
+        within(screen.getByRole("group", { name: "Dashboard view" })).getByRole("button", { name });
+      expect(viewButton("Projects")).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByRole("region", { name: "Workspace status overview" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 2, name: "Projects" })).toBeInTheDocument();
+      expect(screen.queryByRole("region", { name: "Ops request overview" })).not.toBeInTheDocument();
+
+      await user.click(viewButton("Requests"));
+      expect(viewButton("Requests")).toHaveAttribute("aria-pressed", "true");
+      expect(window.location.search).toBe("?view=requests");
+      expect(screen.getByRole("region", { name: "Ops request overview" })).toBeInTheDocument();
+      expect(screen.getByText(/Last updated .* by admin@example\.com · 5 requests/)).toBeInTheDocument();
+      expect(screen.queryByRole("region", { name: "Workspace status overview" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("heading", { level: 2, name: "Projects" })).not.toBeInTheDocument();
+
+      await user.click(viewButton("Projects"));
+      expect(window.location.search).toBe("");
+      expect(screen.getByRole("region", { name: "Workspace status overview" })).toBeInTheDocument();
+    });
+
+    it("opens straight on Requests from the link", () => {
+      render(
+        <DashboardShell
+          initialDashboard={datalakeDashboard}
+          source="fixture"
+          requests={requests}
+          initialView="requests"
+        />,
+      );
+      expect(within(screen.getByRole("group", { name: "Dashboard view" }))
+        .getByRole("button", { name: "Requests" })).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByRole("region", { name: "Ops request overview" })).toBeInTheDocument();
+    });
+
+    it("does not show the view toggle on other dashboards", () => {
+      render(<DashboardShell initialDashboard={dashboard} source="fixture" />);
+      expect(screen.queryByRole("group", { name: "Dashboard view" })).not.toBeInTheDocument();
+    });
   });
 
   it("shows Data Lake team-track dates and KPI statuses", () => {

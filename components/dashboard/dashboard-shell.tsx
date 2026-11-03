@@ -62,9 +62,19 @@ import { PeDeliveryNotes } from "./pe-delivery-notes";
 import { ProjectCard } from "./project-card";
 import { ProjectDetailsModal } from "./project-details-modal";
 import { ProjectTierToggle } from "./project-tier-toggle";
+import { SegmentedToggle } from "@/components/ui/segmented-toggle";
+import { OpsRequestsView } from "@/components/ops/ops-requests-view";
+import type { OpsDataset } from "@/lib/ops/types";
 import { WorkspaceTag } from "./workspace-tag";
 import { updateWorkspaceTag } from "@/lib/data/workspace-mutations";
 import { StatusFilters, type StatusFilter } from "./status-filters";
+
+export type DashboardView = "projects" | "requests";
+
+const VIEW_OPTIONS: ReadonlyArray<{ value: DashboardView; label: string }> = [
+  { value: "projects", label: "Projects" },
+  { value: "requests", label: "Requests" },
+];
 
 interface DashboardShellProps {
   initialDashboard: DashboardViewModel;
@@ -72,6 +82,12 @@ interface DashboardShellProps {
   isAdmin?: boolean;
   adminEmail?: string;
   viewState?: "ready" | "loading" | "error";
+  requests?: {
+    dataset: OpsDataset;
+    loadError: string | null;
+    isAdmin: boolean;
+  };
+  initialView?: DashboardView;
 }
 
 interface EditorState {
@@ -293,6 +309,8 @@ export function DashboardShell({
   isAdmin = false,
   adminEmail,
   viewState = "ready",
+  requests,
+  initialView = "projects",
 }: DashboardShellProps) {
   const realtime = useWorkspaceRealtime(initialDashboard, { enabled: source === "database" });
   const [workspace, setWorkspace] = useState(realtime.data);
@@ -303,6 +321,7 @@ export function DashboardShell({
   const mutationBusyRef = useRef(false);
   const [activeFilter, setActiveFilter] = useState<StatusFilter>("all");
   const [selectedTier, setSelectedTier] = useState<ProjectTier>("critical");
+  const [view, setView] = useState<DashboardView>(initialView);
   const [liveVariant, setLiveVariant] = useState<LiveVariantFilter>("live");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorState | null>(null);
@@ -776,6 +795,25 @@ export function DashboardShell({
     setActiveFilter(effectiveFilter === filter ? "all" : filter);
   }
 
+  const effectiveView: DashboardView = requests ? view : "projects";
+
+  function changeView(next: DashboardView) {
+    setView(next);
+    const url = new URL(window.location.href);
+    if (next === "requests") url.searchParams.set("view", "requests");
+    else url.searchParams.delete("view");
+    window.history.replaceState(window.history.state, "", url);
+  }
+
+  const viewToggle = requests ? (
+    <SegmentedToggle
+      label="Dashboard view"
+      options={VIEW_OPTIONS}
+      value={effectiveView}
+      onChange={changeView}
+    />
+  ) : undefined;
+
   const saveWorkspaceTag = supabase
     ? async (tag: string | null) => {
         await updateWorkspaceTag(supabase, workspace.id, tag);
@@ -870,6 +908,15 @@ export function DashboardShell({
           </div>
         </header>
 
+        {effectiveView === "requests" && requests ? (
+          <OpsRequestsView
+            dataset={requests.dataset}
+            isAdmin={requests.isAdmin}
+            loadError={requests.loadError}
+            toolbar={viewToggle}
+          />
+        ) : (
+        <>
         {usesProjectTiers ? (
           <KpiGrid
             header={
@@ -886,6 +933,7 @@ export function DashboardShell({
           />
         ) : (
           <KpiGrid
+            header={viewToggle}
             statuses={workspace.statuses}
             projects={workspace.projects}
             activeFilter={effectiveFilter}
@@ -1080,6 +1128,8 @@ export function DashboardShell({
             <ErrorState />
           )}
         </section>
+        </>
+        )}
 
         <footer>
           <p>Focused delivery, clearly presented.</p>

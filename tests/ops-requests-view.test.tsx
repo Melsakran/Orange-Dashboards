@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { OpsRequestsPage } from "@/components/ops/ops-requests-page";
+import { OpsRequestsView } from "@/components/ops/ops-requests-view";
 import type { OpsDataset } from "@/lib/ops/types";
 import { sampleRequests } from "./fixtures/ops-requests";
 
@@ -23,11 +23,12 @@ function visibleIds() {
     .map((button) => button.textContent);
 }
 
-describe("OpsRequestsPage", () => {
-  it("shows the header, KPIs, breakdowns, timeline, and request list", () => {
-    render(<OpsRequestsPage dataset={dataset} isAdmin={false} />);
+describe("OpsRequestsView", () => {
+  it("shows the toolbar, upload summary, KPIs, breakdowns, timeline, and request list", () => {
+    render(<OpsRequestsView dataset={dataset} isAdmin={false} toolbar={<span>View toggle</span>} />);
 
-    expect(screen.getByRole("heading", { level: 1, name: "Ops Requests" })).toBeInTheDocument();
+    expect(screen.getByText("View toggle")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
     expect(screen.getByText(/Last updated .* by admin@example\.com · 5 requests/)).toBeInTheDocument();
 
     const overview = screen.getByRole("region", { name: "Ops request overview" });
@@ -50,7 +51,7 @@ describe("OpsRequestsPage", () => {
 
   it("filters the list from the status cards and clears on a second click", async () => {
     const user = userEvent.setup();
-    render(<OpsRequestsPage dataset={dataset} isAdmin={false} />);
+    render(<OpsRequestsView dataset={dataset} isAdmin={false} />);
     const closed = screen.getByRole("button", { name: /^Closed/ });
 
     await user.click(closed);
@@ -64,7 +65,7 @@ describe("OpsRequestsPage", () => {
 
   it("searches and filters by assignee", async () => {
     const user = userEvent.setup();
-    render(<OpsRequestsPage dataset={dataset} isAdmin={false} />);
+    render(<OpsRequestsView dataset={dataset} isAdmin={false} />);
 
     await user.type(screen.getByLabelText("Search"), "quota");
     expect(visibleIds()).toEqual(["SD1004"]);
@@ -79,7 +80,7 @@ describe("OpsRequestsPage", () => {
 
   it("opens request details in a dialog", async () => {
     const user = userEvent.setup();
-    render(<OpsRequestsPage dataset={dataset} isAdmin={false} />);
+    render(<OpsRequestsView dataset={dataset} isAdmin={false} />);
 
     await user.click(screen.getByRole("button", { name: "View details for SD1004" }));
     const dialog = screen.getByRole("dialog", { name: "Quota offer" });
@@ -92,7 +93,7 @@ describe("OpsRequestsPage", () => {
 
   it("shows the empty state and load errors", () => {
     const { rerender } = render(
-      <OpsRequestsPage
+      <OpsRequestsView
         dataset={{ requests: [], upload: null }}
         isAdmin={false}
         loadError="Could not load Ops Requests: boom"
@@ -103,7 +104,7 @@ describe("OpsRequestsPage", () => {
     expect(screen.queryByText("No data uploaded yet")).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Ops request overview" })).not.toBeInTheDocument();
 
-    rerender(<OpsRequestsPage dataset={{ requests: [], upload: null }} isAdmin={false} />);
+    rerender(<OpsRequestsView dataset={{ requests: [], upload: null }} isAdmin={false} />);
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getAllByText("No data uploaded yet").length).toBeGreaterThan(0);
     expect(screen.queryByText("Couldn't load the latest data")).not.toBeInTheDocument();
