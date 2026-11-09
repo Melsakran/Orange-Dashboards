@@ -2972,6 +2972,19 @@ footer {
   min-width: 180px;
 }
 
+.pe-daily-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.pe-daily-toolbar .workspace-description {
+  margin: 0;
+  align-self: center;
+}
+
 .pe-daily-admin-tools {
   display: flex;
   flex-wrap: wrap;

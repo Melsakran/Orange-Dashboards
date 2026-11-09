@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { PeDailyPage } from "@/components/pe-daily/pe-daily-page";
+import { PeDailyView } from "@/components/pe-daily/pe-daily-view";
 import { makePageData, makeReport } from "./fixtures/pe-daily";
 
 const push = vi.hoisted(() => vi.fn());
@@ -32,7 +32,7 @@ describe("PE Daily Report admin tools", () => {
   });
 
   it("hides every admin control from visitors", () => {
-    render(<PeDailyPage data={makePageData()} isAdmin={false} />);
+    render(<PeDailyView data={makePageData()} isAdmin={false} />);
     for (const name of ["Upload", "Chart settings", "Delete this date"]) {
       expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
     }
@@ -40,7 +40,7 @@ describe("PE Daily Report admin tools", () => {
   });
 
   it("shows admin controls, including Edit on all six admin-entered sections", () => {
-    render(<PeDailyPage data={makePageData()} isAdmin />);
+    render(<PeDailyView data={makePageData()} isAdmin />);
     for (const name of ["Upload", "Chart settings", "Delete this date"]) {
       expect(screen.getByRole("button", { name })).toBeInTheDocument();
     }
@@ -56,7 +56,7 @@ describe("PE Daily Report admin tools", () => {
 
   it("previews and saves an upload for an existing date", async () => {
     const user = userEvent.setup();
-    render(<PeDailyPage data={makePageData()} isAdmin />);
+    render(<PeDailyView data={makePageData()} isAdmin />);
     await user.upload(screen.getByLabelText("Choose the daily report file"), sampleFile());
 
     const dialog = await screen.findByRole("dialog", { name: "daily report.csv" });
@@ -66,7 +66,7 @@ describe("PE Daily Report admin tools", () => {
     );
     await user.click(within(dialog).getByRole("button", { name: "Save report" }));
 
-    await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/pe-daily-report?date=2026-10-22"));
+    await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/pe-ops?view=daily-report&date=2026-10-22"));
     expect(refresh).toHaveBeenCalled();
     expect(mutations.savePeDailyReport).toHaveBeenCalledWith(
       fakeClient,
@@ -79,7 +79,7 @@ describe("PE Daily Report admin tools", () => {
 
   it("omits the replace note for a new date and lists file problems", async () => {
     const user = userEvent.setup();
-    render(<PeDailyPage data={makePageData({ dates: ["2026-10-21"] })} isAdmin />);
+    render(<PeDailyView data={makePageData({ dates: ["2026-10-21"] })} isAdmin />);
     await user.upload(screen.getByLabelText("Choose the daily report file"), sampleFile());
     const dialog = await screen.findByRole("dialog", { name: "daily report.csv" });
     expect(dialog).not.toHaveTextContent("This replaces the uploaded data");
@@ -99,7 +99,7 @@ describe("PE Daily Report admin tools", () => {
   it("keeps the upload dialog open with Retry when saving fails", async () => {
     const user = userEvent.setup();
     mutations.savePeDailyReport.mockRejectedValueOnce(new Error("Saving the report failed: timeout"));
-    render(<PeDailyPage data={makePageData()} isAdmin />);
+    render(<PeDailyView data={makePageData()} isAdmin />);
     await user.upload(screen.getByLabelText("Choose the daily report file"), sampleFile());
     const dialog = await screen.findByRole("dialog", { name: "daily report.csv" });
     await user.click(within(dialog).getByRole("button", { name: "Save report" }));
@@ -111,7 +111,7 @@ describe("PE Daily Report admin tools", () => {
 
   it("saves chart settings for everyone", async () => {
     const user = userEvent.setup();
-    render(<PeDailyPage data={makePageData()} isAdmin />);
+    render(<PeDailyView data={makePageData()} isAdmin />);
     await user.click(screen.getByRole("button", { name: "Chart settings" }));
     const dialog = screen.getByRole("dialog", { name: "Chart settings" });
     expect(within(dialog).getByRole("checkbox", { name: "Promos – TX_PROV" })).toBeChecked();
@@ -129,7 +129,7 @@ describe("PE Daily Report admin tools", () => {
   it("deletes the shown date after confirmation and offers Retry on failure", async () => {
     const user = userEvent.setup();
     mutations.deletePeDailyReport.mockRejectedValueOnce(new Error("Deleting the report failed: timeout"));
-    render(<PeDailyPage data={makePageData()} isAdmin />);
+    render(<PeDailyView data={makePageData()} isAdmin />);
 
     await user.click(screen.getByRole("button", { name: "Delete this date" }));
     const confirm = screen.getByRole("dialog", { name: "Delete the 22 Oct 2026 report?" });
@@ -137,7 +137,7 @@ describe("PE Daily Report admin tools", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Deleting the report failed: timeout");
 
     await user.click(screen.getByRole("button", { name: "Retry" }));
-    await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/pe-daily-report"));
+    await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/pe-ops?view=daily-report"));
     expect(mutations.deletePeDailyReport).toHaveBeenLastCalledWith(fakeClient, "2026-10-22");
     expect(refresh).toHaveBeenCalled();
   });
@@ -145,14 +145,14 @@ describe("PE Daily Report admin tools", () => {
   it("drops a failed delete's Retry when the shown date changes", async () => {
     const user = userEvent.setup();
     mutations.deletePeDailyReport.mockRejectedValueOnce(new Error("Deleting the report failed: timeout"));
-    const { rerender } = render(<PeDailyPage data={makePageData()} isAdmin />);
+    const { rerender } = render(<PeDailyView data={makePageData()} isAdmin />);
 
     await user.click(screen.getByRole("button", { name: "Delete this date" }));
     const confirm = screen.getByRole("dialog", { name: "Delete the 22 Oct 2026 report?" });
     await user.click(within(confirm).getByRole("button", { name: "Delete report" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Deleting the report failed: timeout");
 
-    rerender(<PeDailyPage data={makePageData({ report: makeReport({ reportDate: "2026-10-21" }) })} isAdmin />);
+    rerender(<PeDailyView data={makePageData({ report: makeReport({ reportDate: "2026-10-21" }) })} isAdmin />);
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
     expect(mutations.deletePeDailyReport).toHaveBeenCalledTimes(1);

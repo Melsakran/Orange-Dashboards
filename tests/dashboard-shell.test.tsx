@@ -5,6 +5,7 @@ import { EmptyState, ErrorState, LoadingState } from "@/components/ui/view-state
 import type { Workspace } from "@/data/workspaces";
 import { mapFixtureWorkspace } from "@/lib/data/initial-dashboard";
 import { sampleRequests } from "./fixtures/ops-requests";
+import { makePageData } from "./fixtures/pe-daily";
 
 const pushMock = vi.hoisted(() => vi.fn());
 
@@ -390,6 +391,56 @@ describe("DashboardShell", () => {
     it("does not show the view toggle on other dashboards", () => {
       render(<DashboardShell initialDashboard={dashboard} source="fixture" />);
       expect(screen.queryByRole("group", { name: "Dashboard view" })).not.toBeInTheDocument();
+    });
+  });
+
+  describe("PE Operations Projects / Daily Report toggle", () => {
+    const peOpsDashboard = mapFixtureWorkspace({
+      slug: "pe-ops",
+      name: "PE Operations",
+      description: "Promo engine operations tracked manually by the team.",
+      projects: [],
+    });
+    const dailyReport = { data: makePageData(), loadError: null, isAdmin: false };
+    const viewButton = (name: string) =>
+      within(screen.getByRole("group", { name: "Dashboard view" })).getByRole("button", { name });
+
+    beforeEach(() => {
+      window.history.replaceState(null, "", "/pe-ops?date=2026-10-22");
+    });
+
+    it("opens on Projects and switches to the Daily Report, updating the link", async () => {
+      const user = userEvent.setup();
+      render(<DashboardShell initialDashboard={peOpsDashboard} source="fixture" dailyReport={dailyReport} />);
+
+      expect(viewButton("Projects")).toHaveAttribute("aria-pressed", "true");
+      expect(viewButton("Daily Report")).toHaveAttribute("aria-pressed", "false");
+      expect(screen.getByRole("heading", { level: 2, name: "Projects" })).toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: "Promos – TX_PROV" })).not.toBeInTheDocument();
+
+      await user.click(viewButton("Daily Report"));
+      expect(viewButton("Daily Report")).toHaveAttribute("aria-pressed", "true");
+      expect(new URLSearchParams(window.location.search).get("view")).toBe("daily-report");
+      expect(screen.getByRole("heading", { name: "Promos – TX_PROV" })).toBeInTheDocument();
+      expect(screen.getByText(/Uploaded .* by admin@example\.com/)).toBeInTheDocument();
+      expect(screen.queryByRole("region", { name: "Workspace status overview" })).not.toBeInTheDocument();
+
+      await user.click(viewButton("Projects"));
+      expect(window.location.search).toBe("");
+      expect(screen.getByRole("region", { name: "Workspace status overview" })).toBeInTheDocument();
+    });
+
+    it("opens straight on the Daily Report from the link", () => {
+      render(
+        <DashboardShell
+          initialDashboard={peOpsDashboard}
+          source="fixture"
+          dailyReport={dailyReport}
+          initialView="daily-report"
+        />,
+      );
+      expect(viewButton("Daily Report")).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByRole("heading", { name: "Promos – TX_PROV" })).toBeInTheDocument();
     });
   });
 

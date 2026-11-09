@@ -8,15 +8,17 @@ import {
   mapFixtureWorkspace,
   resolveInitialDashboard,
 } from "@/lib/data/initial-dashboard";
-import { hasRequestsView } from "@/lib/dashboard/workspace-style";
+import { hasDailyReportView, hasRequestsView } from "@/lib/dashboard/workspace-style";
 import { loadOpsDataset } from "@/lib/ops/load";
 import type { OpsDataset } from "@/lib/ops/types";
+import { emptyPageData, loadPeDailyPage } from "@/lib/pe-daily/load";
+import type { PeDailyPageData } from "@/lib/pe-daily/types";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabasePublicEnv } from "@/lib/supabase/env";
 
 interface WorkspacePageProps {
   params: Promise<{ workspaceSlug: string }>;
-  searchParams: Promise<{ view?: string | string[] }>;
+  searchParams: Promise<{ view?: string | string[]; date?: string | string[] }>;
 }
 
 // Access controls are derived from the current request's Supabase session.
@@ -44,9 +46,21 @@ async function loadRequests(isAdmin: boolean) {
   return { dataset, loadError, isAdmin };
 }
 
+async function loadDailyReport(requestedDate: string | null, isAdmin: boolean) {
+  const client = hasSupabasePublicEnv() ? await createClient() : null;
+  let data: PeDailyPageData = emptyPageData(requestedDate);
+  let loadError: string | null = null;
+  try {
+    data = await loadPeDailyPage(client, requestedDate);
+  } catch (error) {
+    loadError = error instanceof Error ? error.message : "Could not load the PE Daily Report.";
+  }
+  return { data, loadError, isAdmin };
+}
+
 export default async function WorkspacePage({ params, searchParams }: WorkspacePageProps) {
   const { workspaceSlug } = await params;
-  const { view } = await searchParams;
+  const { view, date } = await searchParams;
   const result = await resolveInitialDashboard(workspaceSlug, {
     envConfigured: hasSupabasePublicEnv(),
     createClient,
@@ -66,9 +80,16 @@ export default async function WorkspacePage({ params, searchParams }: WorkspaceP
     adminEmail = data.user?.email;
   }
 
-  const requests = hasRequestsView(workspaceSlug)
-    ? await loadRequests(result.isAdmin && result.source === "database")
+  const canAdmin = result.isAdmin && result.source === "database";
+  const requests = hasRequestsView(workspaceSlug) ? await loadRequests(canAdmin) : undefined;
+  const requestedDate = typeof date === "string" && date.trim() ? date.trim().slice(0, 32) : null;
+  const dailyReport = hasDailyReportView(workspaceSlug)
+    ? await loadDailyReport(requestedDate, canAdmin)
     : undefined;
+  const initialView =
+    requests && view === "requests" ? "requests"
+      : dailyReport && view === "daily-report" ? "daily-report"
+        : "projects";
 
   return (
     <DashboardShell
@@ -77,7 +98,8 @@ export default async function WorkspacePage({ params, searchParams }: WorkspaceP
       isAdmin={result.isAdmin}
       adminEmail={adminEmail}
       requests={requests}
-      initialView={requests && view === "requests" ? "requests" : "projects"}
+      dailyReport={dailyReport}
+      initialView={initialView}
     />
   );
 }

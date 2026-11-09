@@ -25,6 +25,11 @@ export function hasRequestsView(slug: string): boolean {
   return slug === "datalake-ops";
 }
 
+/** Workspaces with a Projects / Daily Report toggle that embeds the PE Daily Report. */
+export function hasDailyReportView(slug: string): boolean {
+  return slug === "pe-ops";
+}
+
 /** PE Development manual workspace (effort notes below KPIs). */
 export function isPeDeliveryWorkspace(slug: string): boolean {
   return slug === "pe-delivery";

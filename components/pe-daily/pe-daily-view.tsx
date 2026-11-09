@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback } from "react";
+import { useCallback, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { BrandMark } from "@/components/ui/brand-mark";
 import { formatUploadedAt } from "@/lib/ops/analytics";
 import { formatReportDate } from "@/lib/pe-daily/format";
 import type { PeDailyPageData } from "@/lib/pe-daily/types";
@@ -12,10 +11,10 @@ import { ChartSettings } from "./chart-settings";
 import { DeleteReport } from "./delete-report";
 import { ReportUpload } from "./report-upload";
 
-export const PAGE_PATH = "/pe-daily-report";
+export const PAGE_PATH = "/pe-ops?view=daily-report";
 
 export function reportHref(date?: string | null): string {
-  return date ? `${PAGE_PATH}?date=${encodeURIComponent(date)}` : PAGE_PATH;
+  return date ? `${PAGE_PATH}&date=${encodeURIComponent(date)}` : PAGE_PATH;
 }
 
 function subtitle(data: PeDailyPageData, loadError: string | null): string | null {
@@ -27,14 +26,16 @@ function subtitle(data: PeDailyPageData, loadError: string | null): string | nul
   return data.dates.length ? null : "No report uploaded yet";
 }
 
-export function PeDailyPage({
+export function PeDailyView({
   data,
   isAdmin,
   loadError = null,
+  toolbar,
 }: {
   data: PeDailyPageData;
   isAdmin: boolean;
   loadError?: string | null;
+  toolbar?: ReactNode;
 }) {
   const router = useRouter();
   const refresh = useCallback(() => router.refresh(), [router]);
@@ -54,7 +55,7 @@ export function PeDailyPage({
         <p className="view-state-title">No report uploaded yet</p>
         <p>
           {isAdmin
-            ? "Use Upload at the top of the page to add today's export."
+            ? "Use Upload above to add today's export."
             : "An admin hasn't uploaded a daily report yet."}
         </p>
       </section>
@@ -75,17 +76,11 @@ export function PeDailyPage({
   }
 
   return (
-    <main className="dashboard pe-daily-page">
-      <header className="dashboard-header">
-        <div className="brand-lockup">
-          <p className="eyebrow">Promo Engine</p>
-          <div className="brand-title-row">
-            <BrandMark />
-            <h1>PE Daily Report</h1>
-          </div>
+    <div className="pe-daily-page">
+      <div className="kpi-row-header">
+        {toolbar}
+        <div className="pe-daily-toolbar">
           {headerLine ? <p className="workspace-description">{headerLine}</p> : null}
-        </div>
-        <div className="header-tools">
           {isAdmin ? (
             <div className="pe-daily-admin-tools">
               <ReportUpload
@@ -123,8 +118,8 @@ export function PeDailyPage({
             </label>
           ) : null}
         </div>
-      </header>
+      </div>
       {body}
-    </main>
+    </div>
   );
 }

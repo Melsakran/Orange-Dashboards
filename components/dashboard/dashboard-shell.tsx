@@ -64,17 +64,20 @@ import { ProjectDetailsModal } from "./project-details-modal";
 import { ProjectTierToggle } from "./project-tier-toggle";
 import { SegmentedToggle } from "@/components/ui/segmented-toggle";
 import { OpsRequestsView } from "@/components/ops/ops-requests-view";
+import { PeDailyView } from "@/components/pe-daily/pe-daily-view";
 import type { OpsDataset } from "@/lib/ops/types";
+import type { PeDailyPageData } from "@/lib/pe-daily/types";
 import { WorkspaceTag } from "./workspace-tag";
 import { updateWorkspaceTag } from "@/lib/data/workspace-mutations";
 import { StatusFilters, type StatusFilter } from "./status-filters";
 
-export type DashboardView = "projects" | "requests";
+export type DashboardView = "projects" | "requests" | "daily-report";
 
-const VIEW_OPTIONS: ReadonlyArray<{ value: DashboardView; label: string }> = [
-  { value: "projects", label: "Projects" },
-  { value: "requests", label: "Requests" },
-];
+const VIEW_LABELS: Record<DashboardView, string> = {
+  projects: "Projects",
+  requests: "Requests",
+  "daily-report": "Daily Report",
+};
 
 interface DashboardShellProps {
   initialDashboard: DashboardViewModel;
@@ -84,6 +87,11 @@ interface DashboardShellProps {
   viewState?: "ready" | "loading" | "error";
   requests?: {
     dataset: OpsDataset;
+    loadError: string | null;
+    isAdmin: boolean;
+  };
+  dailyReport?: {
+    data: PeDailyPageData;
     loadError: string | null;
     isAdmin: boolean;
   };
@@ -310,6 +318,7 @@ export function DashboardShell({
   adminEmail,
   viewState = "ready",
   requests,
+  dailyReport,
   initialView = "projects",
 }: DashboardShellProps) {
   const realtime = useWorkspaceRealtime(initialDashboard, { enabled: source === "database" });
@@ -795,20 +804,30 @@ export function DashboardShell({
     setActiveFilter(effectiveFilter === filter ? "all" : filter);
   }
 
-  const effectiveView: DashboardView = requests ? view : "projects";
+  const secondaryView: DashboardView | null = requests
+    ? "requests"
+    : dailyReport ? "daily-report" : null;
+  const effectiveView: DashboardView = secondaryView && view === secondaryView ? view : "projects";
 
   function changeView(next: DashboardView) {
     setView(next);
     const url = new URL(window.location.href);
-    if (next === "requests") url.searchParams.set("view", "requests");
-    else url.searchParams.delete("view");
+    if (next === "projects") {
+      url.searchParams.delete("view");
+      url.searchParams.delete("date");
+    } else {
+      url.searchParams.set("view", next);
+    }
     window.history.replaceState(window.history.state, "", url);
   }
 
-  const viewToggle = requests ? (
+  const viewToggle = secondaryView ? (
     <SegmentedToggle
       label="Dashboard view"
-      options={VIEW_OPTIONS}
+      options={(["projects", secondaryView] as const).map((value) => ({
+        value,
+        label: VIEW_LABELS[value],
+      }))}
       value={effectiveView}
       onChange={changeView}
     />
@@ -913,6 +932,13 @@ export function DashboardShell({
             dataset={requests.dataset}
             isAdmin={requests.isAdmin}
             loadError={requests.loadError}
+            toolbar={viewToggle}
+          />
+        ) : effectiveView === "daily-report" && dailyReport ? (
+          <PeDailyView
+            data={dailyReport.data}
+            isAdmin={dailyReport.isAdmin}
+            loadError={dailyReport.loadError}
             toolbar={viewToggle}
           />
         ) : (

@@ -10,7 +10,7 @@ const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 const ADMIN_ID = "00000000-0000-4000-8000-000000000001";
 const USER_ID = "00000000-0000-4000-8000-000000000002";
 
-function row(interactionId: string, overrides: Record<string, string | null> = {}) {
+function row(interactionId: string, overrides: Record<string, string | boolean | null> = {}) {
   return {
     interaction_id: interactionId,
     status: "closed",
