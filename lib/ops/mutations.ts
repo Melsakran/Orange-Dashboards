@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
-import type { OpsAreaGroup, OpsRequest, OpsStatus, OpsTeam } from "./types";
+import type { OpsRequest, OpsStatus, OpsTeam } from "./types";
 
 export type OpsReplaceRow = {
   interaction_id: string;
@@ -78,18 +78,6 @@ export interface OpsManualItemInput {
   requestorName: string;
   assignedTo: string;
   closureCode: string;
-  /** Legacy ownership fields: only the not-yet-rewritten form sends them; removed in Task 3. */
-  areaId?: string | null;
-  ownerName?: string;
-}
-
-export interface OpsAreaInput {
-  id?: string;
-  group: OpsAreaGroup;
-  name: string;
-  ownerName: string;
-  reportsTo: string;
-  sortOrder: number;
 }
 
 type OpsClient = SupabaseClient<Database>;
@@ -117,8 +105,6 @@ export async function saveOpsManualItem(supabase: OpsClient, input: OpsManualIte
       requestor_name: input.requestorName,
       assigned_to: input.assignedTo,
       closure_code: input.closureCode,
-      ...(input.areaId !== undefined ? { area_id: input.areaId } : {}),
-      ...(input.ownerName !== undefined ? { owner_name: input.ownerName } : {}),
     },
   });
   if (error) throw saveFailure(error.message);
@@ -128,45 +114,5 @@ export async function saveOpsManualItem(supabase: OpsClient, input: OpsManualIte
 
 export async function deleteOpsManualItem(supabase: OpsClient, id: string): Promise<void> {
   const { error } = await supabase.rpc("delete_ops_manual_item", { p_id: id });
-  if (error) throw saveFailure(error.message);
-}
-
-export async function routeOpsRequest(
-  supabase: OpsClient,
-  id: string,
-  areaId: string | null,
-  ownerName: string,
-): Promise<void> {
-  const { error } = await supabase.rpc("route_ops_request", {
-    p_id: id,
-    p_area_id: areaId,
-    p_owner_name: ownerName,
-  });
-  if (error) throw saveFailure(error.message);
-}
-
-export async function saveOpsArea(supabase: OpsClient, area: OpsAreaInput): Promise<string> {
-  const { data, error } = await supabase.rpc("save_ops_area", {
-    p_area: {
-      id: area.id ?? null,
-      area_group: area.group,
-      name: area.name,
-      owner_name: area.ownerName,
-      reports_to: area.reportsTo,
-      sort_order: area.sortOrder,
-    },
-  });
-  if (error) throw saveFailure(error.message);
-  if (!data) throw saveFailure("no id was returned.");
-  return data;
-}
-
-export async function deleteOpsArea(supabase: OpsClient, id: string): Promise<void> {
-  const { error } = await supabase.rpc("delete_ops_area", { p_id: id });
-  if (error) throw saveFailure(error.message);
-}
-
-export async function saveOpsSettings(supabase: OpsClient, escalationDays: number): Promise<void> {
-  const { error } = await supabase.rpc("save_ops_settings", { p_escalation_days: escalationDays });
   if (error) throw saveFailure(error.message);
 }

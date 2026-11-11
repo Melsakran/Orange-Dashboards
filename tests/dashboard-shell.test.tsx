@@ -394,6 +394,43 @@ describe("DashboardShell", () => {
       expect(window.location.search).toBe("");
     });
 
+    it("syncs the team param and clears it with view and tab when switching back to Projects", async () => {
+      const user = userEvent.setup();
+      render(<DashboardShell initialDashboard={datalakeDashboard} source="fixture" requests={requests} />);
+      const viewButton = (name: string) =>
+        within(screen.getByRole("group", { name: "Dashboard view" })).getByRole("button", { name });
+      const team = (name: string) =>
+        within(screen.getByRole("group", { name: "Team" })).getByRole("button", { name });
+
+      await user.click(viewButton("Requests"));
+      expect(team("Operations")).toHaveAttribute("aria-pressed", "true");
+      await user.click(screen.getByRole("button", { name: "Issues" }));
+      await user.click(team("Data Analytics"));
+      expect(window.location.search).toBe("?view=requests&tab=issues&team=analytics");
+
+      await user.click(viewButton("Projects"));
+      expect(window.location.search).toBe("");
+
+      await user.click(viewButton("Requests"));
+      expect(screen.getByRole("button", { name: "Merge Requests" })).toHaveAttribute("aria-pressed", "true");
+      expect(team("Operations")).toHaveAttribute("aria-pressed", "true");
+    });
+
+    it("opens straight on Data Analytics from the link", () => {
+      render(
+        <DashboardShell
+          initialDashboard={datalakeDashboard}
+          source="fixture"
+          requests={requests}
+          initialView="requests"
+          initialTeam="data_analytics"
+        />,
+      );
+      expect(within(screen.getByRole("group", { name: "Team" })).getByRole("button", { name: "Data Analytics" }))
+        .toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByText("No data uploaded yet for Data Analytics")).toBeInTheDocument();
+    });
+
     it("opens straight on the Issues tab from the link", () => {
       render(
         <DashboardShell
@@ -465,13 +502,14 @@ describe("DashboardShell", () => {
 
     it("drops a stale tab param when switching to the Daily Report", async () => {
       const user = userEvent.setup();
-      window.history.replaceState(null, "", "/pe-ops?view=requests&tab=issues");
+      window.history.replaceState(null, "", "/pe-ops?view=requests&tab=issues&team=analytics");
       render(<DashboardShell initialDashboard={peOpsDashboard} source="fixture" dailyReport={dailyReport} />);
 
       await user.click(viewButton("Daily Report"));
       const params = new URLSearchParams(window.location.search);
       expect(params.get("view")).toBe("daily-report");
       expect(params.has("tab")).toBe(false);
+      expect(params.has("team")).toBe(false);
     });
 
     it("opens straight on the Daily Report from the link", () => {

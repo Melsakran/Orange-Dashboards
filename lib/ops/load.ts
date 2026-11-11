@@ -24,8 +24,6 @@ export function mapOpsRequestRow(row: Tables<"ops_requests">): OpsRequest {
     id: row.id,
     source: row.source as OpsSource,
     team: row.team as OpsTeam,
-    areaId: row.area_id,
-    ownerName: row.owner_name,
     interactionId: row.interaction_id,
     status: row.status as OpsStatus,
     assignmentTime: wallClock(row.assignment_time),

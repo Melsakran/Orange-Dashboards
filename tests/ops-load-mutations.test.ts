@@ -2,7 +2,13 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadOpsDataset, mapOpsRequestRow, OPS_PAGE_SIZE } from "@/lib/ops/load";
-import { emptyOpsDataset, OPS_TEAM_LABELS, OPS_TEAMS } from "@/lib/ops/types";
+import {
+  emptyOpsDataset,
+  opsTeamFromParam,
+  opsTeamToParam,
+  OPS_TEAM_LABELS,
+  OPS_TEAMS,
+} from "@/lib/ops/types";
 import { replaceOpsRequests, toReplaceRows } from "@/lib/ops/mutations";
 import type { Database, Tables } from "@/types/database";
 import { makeOpsRequest } from "./fixtures/ops-requests";
@@ -171,7 +177,8 @@ describe("loadOpsDataset", () => {
     const { client, tables } = fakeClient({});
     const dataset = await loadOpsDataset(client);
     expect(new Set(tables)).toEqual(new Set(["ops_requests", "ops_request_uploads"]));
-    expect(dataset.areas).toEqual([]);
+    expect(dataset).not.toHaveProperty("areas");
+    expect(dataset).not.toHaveProperty("settings");
   });
 
   it("throws a readable error when loading fails", async () => {
@@ -189,15 +196,11 @@ describe("mapOpsRequestRow", () => {
       close_date: null,
       status: "open",
       source: "manual",
-      area_id: "area-1",
-      owner_name: "Mona",
       team: "data_analytics",
     }))).toEqual({
       id: "uuid-SD1",
       source: "manual",
       team: "data_analytics",
-      areaId: "area-1",
-      ownerName: "Mona",
       interactionId: "SD1",
       status: "open",
       assignmentTime: "2026-05-17T13:50:00",
@@ -265,5 +268,20 @@ describe("replaceOpsRequests", () => {
     const empty = vi.fn().mockResolvedValue({ data: null, error: null });
     await expect(replaceOpsRequests({ rpc: empty } as unknown as SupabaseClient<Database>, "operations", "a.csv", []))
       .rejects.toThrow("Upload failed: no upload id was returned.");
+  });
+});
+
+describe("team URL parameter", () => {
+  it("maps analytics to Data Analytics and everything else to Operations", () => {
+    expect(opsTeamFromParam("analytics")).toBe("data_analytics");
+    expect(opsTeamFromParam(undefined)).toBe("operations");
+    expect(opsTeamFromParam("operations")).toBe("operations");
+    expect(opsTeamFromParam("nonsense")).toBe("operations");
+    expect(opsTeamFromParam(["analytics"])).toBe("operations");
+  });
+
+  it("leaves Operations out of the URL", () => {
+    expect(opsTeamToParam("data_analytics")).toBe("analytics");
+    expect(opsTeamToParam("operations")).toBeNull();
   });
 });

@@ -6,12 +6,13 @@ import { useFileUpload } from "@/components/ui/use-file-upload";
 import { countByStatus } from "@/lib/ops/analytics";
 import { replaceOpsRequests } from "@/lib/ops/mutations";
 import { normalizeRequests, type NormalizeResult } from "@/lib/ops/normalize";
-import { OPS_STATUSES, OPS_STATUS_LABELS } from "@/lib/ops/types";
+import { OPS_STATUSES, OPS_STATUS_LABELS, OPS_TEAM_LABELS, type OpsTeam } from "@/lib/ops/types";
 import { parseSheetFile } from "@/lib/sheets/parse-sheet";
 import { createClient } from "@/lib/supabase/client";
 
 function UploadReview({
   result,
+  teamLabel,
   manualInteractionIds,
   saving,
   saveError,
@@ -19,6 +20,7 @@ function UploadReview({
   onConfirm,
 }: {
   result: NormalizeResult;
+  teamLabel: string;
   manualInteractionIds: ReadonlySet<string>;
   saving: boolean;
   saveError: string | null;
@@ -70,12 +72,12 @@ function UploadReview({
       </p>
       {collisions > 0 ? (
         <p>
-          Replacing will update all imported Ops Requests data. {collisions} manually added{" "}
+          Replacing will update all imported {teamLabel} requests. {collisions} manually added{" "}
           {collisions === 1 ? "item" : "items"} with the same Interaction ID will be replaced by the
           file&apos;s rows.
         </p>
       ) : (
-        <p>Replacing will update all imported Ops Requests data. Manually added items are kept.</p>
+        <p>Replacing will update all imported {teamLabel} requests. Manually added items are kept.</p>
       )}
       {saveError ? (
         <div className="mutation-notice" role="alert">
@@ -101,22 +103,26 @@ function UploadReview({
 }
 
 export function OpsUpload({
+  team,
   onUploaded,
   manualInteractionIds,
 }: {
+  /** The team the file is uploaded for: it replaces only that team's imported requests. */
+  team: OpsTeam;
   onUploaded: () => void;
-  /** Interaction IDs of the manual items currently on the page. */
+  /** Interaction IDs of the selected team's manual items currently on the page. */
   manualInteractionIds: ReadonlySet<string>;
 }) {
   const { state, close, chooseFile, confirm } = useFileUpload<NormalizeResult>({
     read: async (file) => normalizeRequests(await parseSheetFile(file)),
     canSave: (result) => result.ok,
     save: async (fileName, result) => {
-      if (result.ok) await replaceOpsRequests(createClient(), "operations", fileName, result.requests);
+      if (result.ok) await replaceOpsRequests(createClient(), team, fileName, result.requests);
     },
     onSaved: () => onUploaded(),
   });
 
+  const teamLabel = OPS_TEAM_LABELS[team];
   return (
     <>
       <FilePickerButton inputLabel="Choose a CSV or Excel file to upload" onFile={(file) => void chooseFile(file)} />
@@ -127,7 +133,7 @@ export function OpsUpload({
           onClose={close}
           className="admin-modal ops-upload-modal"
         >
-          <p className="eyebrow">Upload</p>
+          <p className="eyebrow">Upload for {teamLabel}</p>
           <h2 id="ops-upload-title">{state.fileName}</h2>
           {state.phase === "reading" ? <p role="status">Reading file…</p> : null}
           {state.phase === "failed" ? (
@@ -138,6 +144,7 @@ export function OpsUpload({
           {state.phase === "review" ? (
             <UploadReview
               result={state.result}
+              teamLabel={teamLabel}
               manualInteractionIds={manualInteractionIds}
               saving={state.saving}
               saveError={state.saveError}

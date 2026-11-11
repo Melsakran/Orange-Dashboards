@@ -112,8 +112,6 @@ export function normalizeRequests(sheet: RawSheet): NormalizeResult {
       // The caller overrides the team with the one chosen for the upload.
       team: "operations",
       source: "import",
-      areaId: null,
-      ownerName: "",
       interactionId,
       status,
       assignmentTime,

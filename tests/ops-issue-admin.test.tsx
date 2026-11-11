@@ -2,31 +2,23 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { OpsRequestsView } from "@/components/ops/ops-requests-view";
 import { timestampMs } from "@/lib/ops/analytics";
-import { emptyOpsDataset, type OpsArea, type OpsDataset } from "@/lib/ops/types";
+import { emptyOpsDataset, type OpsDataset } from "@/lib/ops/types";
 import { makeOpsRequest } from "./fixtures/ops-requests";
 
 const refresh = vi.hoisted(() => vi.fn());
 const saveOpsManualItem = vi.hoisted(() => vi.fn());
 const deleteOpsManualItem = vi.hoisted(() => vi.fn());
-const routeOpsRequest = vi.hoisted(() => vi.fn());
 const fakeClient = vi.hoisted(() => ({ kind: "browser-client" }));
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 vi.mock("@/lib/supabase/client", () => ({ createClient: () => fakeClient }));
-vi.mock("@/lib/ops/mutations", () => ({ saveOpsManualItem, deleteOpsManualItem, routeOpsRequest }));
+vi.mock("@/lib/ops/mutations", () => ({ saveOpsManualItem, deleteOpsManualItem }));
 vi.mock("@/components/ops/use-client-now", () => ({
   useClientNow: () => timestampMs("2026-05-21T08:00:00"),
 }));
 
-const areas: OpsArea[] = [
-  { id: "a-rep", group: "reporting", name: "Sales reports", ownerName: "Rita", reportsTo: "Carol", sortOrder: 0 },
-  { id: "a-ops", group: "operations", name: "Pipelines", ownerName: "Alice", reportsTo: "Dina", sortOrder: 0 },
-  { id: "a-dem", group: "demand", name: "Campaigns", ownerName: "Dan", reportsTo: "Carol", sortOrder: 0 },
-];
-
 const dataset: OpsDataset = {
   ...emptyOpsDataset(),
-  areas,
   requests: [
     makeOpsRequest({
       id: "id-merge-import",
@@ -52,7 +44,6 @@ const dataset: OpsDataset = {
       id: "id-issue-import",
       interactionId: "ISS-IMPORT",
       requestTitle: "Imported issue",
-      areaId: "a-ops",
       status: "open",
       assignmentTime: "2026-05-19T08:00:00",
       closeDate: null,
@@ -63,10 +54,31 @@ const dataset: OpsDataset = {
       interactionId: "ISS-MANUAL",
       source: "manual",
       requestTitle: "Manual issue",
-      areaId: "a-rep",
-      ownerName: "Zed",
       status: "pending",
       assignmentTime: "2026-05-18T10:15:00",
+      closeDate: null,
+      closureCode: "",
+    }),
+    makeOpsRequest({
+      id: "id-da-merge-manual",
+      interactionId: "DA-MRG-MANUAL",
+      team: "data_analytics",
+      source: "manual",
+      isMergeRequest: true,
+      requestTitle: "DA manual merge",
+      status: "open",
+      assignmentTime: "2026-05-17T08:00:00",
+      closeDate: null,
+      closureCode: "",
+    }),
+    makeOpsRequest({
+      id: "id-da-issue-manual",
+      interactionId: "DA-ISS-MANUAL",
+      team: "data_analytics",
+      source: "manual",
+      requestTitle: "DA manual issue",
+      status: "open",
+      assignmentTime: "2026-05-16T08:00:00",
       closeDate: null,
       closureCode: "",
     }),
@@ -75,6 +87,10 @@ const dataset: OpsDataset = {
 
 function renderView(isAdmin = true, data: OpsDataset = dataset) {
   return render(<OpsRequestsView dataset={data} isAdmin={isAdmin} />);
+}
+
+async function openDataAnalytics(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(within(screen.getByRole("group", { name: "Team" })).getByRole("button", { name: "Data Analytics" }));
 }
 
 async function openIssuesTab(user: ReturnType<typeof userEvent.setup>) {
@@ -94,7 +110,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   saveOpsManualItem.mockResolvedValue("new-id");
   deleteOpsManualItem.mockResolvedValue(undefined);
-  routeOpsRequest.mockResolvedValue(undefined);
 });
 
 describe("admin-only controls", () => {
@@ -114,28 +129,23 @@ describe("admin-only controls", () => {
     expect(screen.queryByRole("button", { name: "Add merge request" })).not.toBeInTheDocument();
   });
 
-  it("shows Edit/Delete only for manual items and Route only for imported issues, to admins", async () => {
+  it("shows Edit/Delete only for manual items, to admins", async () => {
     const user = userEvent.setup();
     renderView(true);
 
     let dialog = await openDetails(user, "MRG-MANUAL");
     expect(within(dialog).getByRole("button", { name: "Edit" })).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Delete" })).toBeInTheDocument();
-    expect(within(dialog).queryByRole("button", { name: "Route" })).not.toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Close request details" }));
 
     dialog = await openDetails(user, "MRG-IMPORT");
-    expect(within(dialog).queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
-    expect(within(dialog).queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
-    expect(within(dialog).queryByRole("button", { name: "Route" })).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: /^(Edit|Delete|Route)$/ })).not.toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Close request details" }));
 
     await openIssuesTab(user);
     dialog = await openDetails(user, "ISS-IMPORT");
-    expect(within(dialog).getByRole("button", { name: "Route" })).toBeInTheDocument();
-    expect(within(dialog).queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
-    expect(within(dialog).queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
-    await user.click(within(dialog).getByRole("button", { name: "Close issue details" }));
+    expect(within(dialog).queryByRole("button", { name: /^(Edit|Delete|Route)$/ })).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Close request details" }));
 
     dialog = await openDetails(user, "ISS-MANUAL");
     expect(within(dialog).getByRole("button", { name: "Edit" })).toBeInTheDocument();
@@ -143,7 +153,7 @@ describe("admin-only controls", () => {
     expect(within(dialog).queryByRole("button", { name: "Route" })).not.toBeInTheDocument();
   });
 
-  it("shows visitors no Edit, Delete or Route controls", async () => {
+  it("shows visitors no Edit or Delete controls", async () => {
     const user = userEvent.setup();
     renderView(false);
 
@@ -152,9 +162,6 @@ describe("admin-only controls", () => {
     await user.click(within(dialog).getByRole("button", { name: "Close request details" }));
 
     await openIssuesTab(user);
-    dialog = await openDetails(user, "ISS-IMPORT");
-    expect(within(dialog).queryByRole("button", { name: /^(Edit|Delete|Route)$/ })).not.toBeInTheDocument();
-    await user.click(within(dialog).getByRole("button", { name: "Close issue details" }));
     dialog = await openDetails(user, "ISS-MANUAL");
     expect(within(dialog).queryByRole("button", { name: /^(Edit|Delete|Route)$/ })).not.toBeInTheDocument();
   });
@@ -195,8 +202,6 @@ describe("Add merge request", () => {
       requestorName: "Rana",
       assignedTo: "Omar",
       closureCode: "Successful",
-      areaId: null,
-      ownerName: "",
     });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
@@ -354,64 +359,45 @@ describe("Add merge request", () => {
   });
 });
 
-describe("Add issue", () => {
-  async function openAddIssue(user: ReturnType<typeof userEvent.setup>) {
+describe("Add form follows the current kind and team", () => {
+  async function openAdd(user: ReturnType<typeof userEvent.setup>, tab: "merge" | "issues", dataTeam: boolean) {
     renderView();
-    await openIssuesTab(user);
-    await user.click(screen.getByRole("button", { name: "Add issue" }));
-    return screen.findByRole("dialog", { name: "Add issue" });
+    if (tab === "issues") await openIssuesTab(user);
+    if (dataTeam) await openDataAnalytics(user);
+    await user.click(screen.getByRole("button", { name: tab === "issues" ? "Add issue" : "Add merge request" }));
+    return screen.findByRole("dialog", { name: tab === "issues" ? "Add issue" : "Add merge request" });
   }
 
-  it("requires an area and groups the Area choices", async () => {
+  it.each([
+    ["merge", false, "merge", "operations", "Operations"],
+    ["issues", false, "issue", "operations", "Operations"],
+    ["merge", true, "merge", "data_analytics", "Data Analytics"],
+    ["issues", true, "issue", "data_analytics", "Data Analytics"],
+  ] as const)("on %s (analytics: %s) saves a %s item for %s", async (tab, dataTeam, kind, team, label) => {
     const user = userEvent.setup();
-    const dialog = await openAddIssue(user);
-
-    const groups = Array.from(dialog.querySelectorAll("optgroup")).map((group) => group.label);
-    expect(groups).toEqual(["Reporting & Dashboarding SPOCs", "Data Lake Operations", "Demand Projects"]);
+    const dialog = await openAdd(user, tab, dataTeam);
+    expect(dialog).toHaveTextContent(label);
+    expect(within(dialog).queryByLabelText("Area")).not.toBeInTheDocument();
+    expect(within(dialog).queryByLabelText("Owner")).not.toBeInTheDocument();
 
     setValue("Title", "Broken load");
     setValue("Assignment date and time", "2026-05-21T09:30");
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
-    expect(within(dialog).getByText("Choose an area.")).toBeInTheDocument();
-    expect(saveOpsManualItem).not.toHaveBeenCalled();
-  });
 
-  it("pre-fills the owner from the area, follows area changes, and stores an area owner as empty", async () => {
-    const user = userEvent.setup();
-    const dialog = await openAddIssue(user);
-    setValue("Title", "Broken load");
-    setValue("Assignment date and time", "2026-05-21T09:30");
-
-    const owner = within(dialog).getByLabelText("Owner");
-    expect(owner).toHaveValue("");
-    setValue("Area", "a-rep");
-    expect(owner).toHaveValue("Rita");
-    setValue("Area", "a-ops");
-    expect(owner).toHaveValue("Alice");
-
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
     await vi.waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
-    expect(saveOpsManualItem).toHaveBeenCalledWith(
-      fakeClient,
-      expect.objectContaining({ kind: "issue", areaId: "a-ops", ownerName: "" }),
-    );
+    const payload = saveOpsManualItem.mock.calls[0][1];
+    expect(payload).toMatchObject({ team, kind, requestTitle: "Broken load" });
+    expect(payload).not.toHaveProperty("areaId");
+    expect(payload).not.toHaveProperty("ownerName");
   });
 
-  it("stops following the area once the admin types an owner, and stores that override", async () => {
+  it("labels the Add button for the current kind on every team", async () => {
     const user = userEvent.setup();
-    const dialog = await openAddIssue(user);
-    setValue("Title", "Broken load");
-    setValue("Assignment date and time", "2026-05-21T09:30");
-
-    setValue("Area", "a-rep");
-    await user.clear(within(dialog).getByLabelText("Owner"));
-    await user.type(within(dialog).getByLabelText("Owner"), "Maya");
-    setValue("Area", "a-dem");
-    expect(within(dialog).getByLabelText("Owner")).toHaveValue("Maya");
-
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
-    await vi.waitFor(() => expect(saveOpsManualItem).toHaveBeenCalledTimes(1));
-    expect(saveOpsManualItem.mock.calls[0][1]).toMatchObject({ areaId: "a-dem", ownerName: "Maya" });
+    renderView();
+    await openDataAnalytics(user);
+    expect(screen.getByRole("button", { name: "Add merge request" })).toBeInTheDocument();
+    await openIssuesTab(user);
+    expect(screen.getByRole("button", { name: "Add issue" })).toBeInTheDocument();
   });
 });
 
@@ -450,26 +436,24 @@ describe("Edit and delete manual items", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("pre-fills a manual issue's area and owner override", async () => {
+  it("keeps a Data Analytics item's team when editing it", async () => {
     const user = userEvent.setup();
     renderView();
     await openIssuesTab(user);
-    const details = await openDetails(user, "ISS-MANUAL");
+    await openDataAnalytics(user);
+    const details = await openDetails(user, "DA-ISS-MANUAL");
     await user.click(within(details).getByRole("button", { name: "Edit" }));
 
     const dialog = await screen.findByRole("dialog", { name: "Edit issue" });
-    expect(within(dialog).getByLabelText("Area")).toHaveValue("a-rep");
-    expect(within(dialog).getByLabelText("Owner")).toHaveValue("Zed");
-
-    // Typing the area's own owner clears the override.
-    setValue("Owner", "Rita");
+    expect(within(dialog).queryByLabelText("Area")).not.toBeInTheDocument();
+    expect(within(dialog).queryByLabelText("Owner")).not.toBeInTheDocument();
+    setValue("Title", "Renamed");
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
     await vi.waitFor(() => expect(saveOpsManualItem).toHaveBeenCalledTimes(1));
     expect(saveOpsManualItem.mock.calls[0][1]).toMatchObject({
-      id: "id-issue-manual",
+      id: "id-da-issue-manual",
+      team: "data_analytics",
       kind: "issue",
-      areaId: "a-rep",
-      ownerName: "",
     });
   });
 
@@ -521,135 +505,5 @@ describe("Edit and delete manual items", () => {
     expect(await within(confirm).findByRole("alert")).toHaveTextContent("Only admins can change Ops Requests.");
     expect(screen.getByRole("dialog", { name: "Delete ISS-MANUAL?" })).toBeInTheDocument();
     expect(refresh).not.toHaveBeenCalled();
-  });
-});
-
-describe("Route imported issues", () => {
-  async function openRoute(user: ReturnType<typeof userEvent.setup>) {
-    renderView();
-    await openIssuesTab(user);
-    const details = await openDetails(user, "ISS-IMPORT");
-    await user.click(within(details).getByRole("button", { name: "Route" }));
-    return screen.findByRole("dialog", { name: "Route issue" });
-  }
-
-  it("pre-fills the current area, saves the new area with the owner stored as empty, and refreshes", async () => {
-    const user = userEvent.setup();
-    const dialog = await openRoute(user);
-    expect(within(dialog).getByLabelText("Area")).toHaveValue("a-ops");
-    expect(within(dialog).getByLabelText("Owner")).toHaveValue("Alice");
-
-    setValue("Area", "a-dem");
-    expect(within(dialog).getByLabelText("Owner")).toHaveValue("Dan");
-    await user.click(within(dialog).getByRole("button", { name: "Save routing" }));
-
-    await vi.waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
-    expect(routeOpsRequest).toHaveBeenCalledWith(fakeClient, "id-issue-import", "a-dem", "");
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-  });
-
-  it("saves a typed owner override", async () => {
-    const user = userEvent.setup();
-    const dialog = await openRoute(user);
-
-    setValue("Area", "a-rep");
-    await user.clear(within(dialog).getByLabelText("Owner"));
-    await user.type(within(dialog).getByLabelText("Owner"), "Maya");
-    await user.click(within(dialog).getByRole("button", { name: "Save routing" }));
-
-    await vi.waitFor(() => expect(routeOpsRequest).toHaveBeenCalledTimes(1));
-    expect(routeOpsRequest).toHaveBeenCalledWith(fakeClient, "id-issue-import", "a-rep", "Maya");
-  });
-
-  it("requires an area", async () => {
-    const user = userEvent.setup();
-    const dialog = await openRoute(user);
-
-    setValue("Area", "");
-    await user.click(within(dialog).getByRole("button", { name: "Save routing" }));
-    expect(within(dialog).getByText("Choose an area.")).toBeInTheDocument();
-    expect(routeOpsRequest).not.toHaveBeenCalled();
-  });
-
-  it("keeps the dialog open and shows the error when routing fails", async () => {
-    const user = userEvent.setup();
-    routeOpsRequest.mockRejectedValueOnce(new Error("Saving failed: boom"));
-    const dialog = await openRoute(user);
-
-    await user.click(within(dialog).getByRole("button", { name: "Save routing" }));
-    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Saving failed: boom");
-    expect(screen.getByRole("dialog", { name: "Route issue" })).toBeInTheDocument();
-    expect(refresh).not.toHaveBeenCalled();
-  });
-
-  it("blocks double submits while saving", async () => {
-    const user = userEvent.setup();
-    let finish: () => void = () => {};
-    routeOpsRequest.mockReturnValueOnce(new Promise<void>((resolve) => { finish = resolve; }));
-    const dialog = await openRoute(user);
-
-    const form = dialog.querySelector("form")!;
-    fireEvent.submit(form);
-    fireEvent.submit(form);
-    expect(routeOpsRequest).toHaveBeenCalledTimes(1);
-    finish();
-    await vi.waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
-  });
-});
-
-describe("Stale area references", () => {
-  const staleDataset: OpsDataset = {
-    ...dataset,
-    requests: [
-      makeOpsRequest({
-        id: "id-stale-manual",
-        interactionId: "ISS-STALE-MANUAL",
-        source: "manual",
-        requestTitle: "Stale manual issue",
-        areaId: "a-gone",
-        status: "open",
-        assignmentTime: "2026-05-18T10:15:00",
-        closeDate: null,
-        closureCode: "",
-      }),
-      makeOpsRequest({
-        id: "id-stale-import",
-        interactionId: "ISS-STALE-IMPORT",
-        requestTitle: "Stale imported issue",
-        areaId: "a-gone",
-        status: "open",
-        assignmentTime: "2026-05-18T10:15:00",
-        closeDate: null,
-        closureCode: "",
-      }),
-    ],
-  };
-
-  it("starts the edit form on 'Choose an area' and requires one when the item's area was deleted", async () => {
-    const user = userEvent.setup();
-    renderView(true, staleDataset);
-    await openIssuesTab(user);
-    const details = await openDetails(user, "ISS-STALE-MANUAL");
-    await user.click(within(details).getByRole("button", { name: "Edit" }));
-
-    const dialog = await screen.findByRole("dialog", { name: "Edit issue" });
-    expect(within(dialog).getByLabelText("Area")).toHaveValue("");
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
-    expect(within(dialog).getByText("Choose an area.")).toBeInTheDocument();
-    expect(saveOpsManualItem).not.toHaveBeenCalled();
-  });
-
-  it("requires an area in the routing dialog when the current area was deleted", async () => {
-    const user = userEvent.setup();
-    renderView(true, staleDataset);
-    await openIssuesTab(user);
-    const details = await openDetails(user, "ISS-STALE-IMPORT");
-    await user.click(within(details).getByRole("button", { name: "Route" }));
-
-    const dialog = await screen.findByRole("dialog", { name: "Route issue" });
-    expect(within(dialog).getByLabelText("Area")).toHaveValue("");
-    await user.click(within(dialog).getByRole("button", { name: "Save routing" }));
-    expect(within(dialog).getByText("Choose an area.")).toBeInTheDocument();
-    expect(routeOpsRequest).not.toHaveBeenCalled();
   });
 });

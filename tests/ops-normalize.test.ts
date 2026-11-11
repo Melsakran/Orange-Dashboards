@@ -64,8 +64,6 @@ describe("normalizeRequests", () => {
       id: "",
       source: "import",
       team: "operations",
-      areaId: null,
-      ownerName: "",
       interactionId: "SD1265202",
       status: "closed",
       assignmentTime: "2026-05-17T13:50:00",

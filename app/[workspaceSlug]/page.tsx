@@ -10,7 +10,7 @@ import {
 } from "@/lib/data/initial-dashboard";
 import { hasDailyReportView, hasRequestsView } from "@/lib/dashboard/workspace-style";
 import { loadOpsDataset } from "@/lib/ops/load";
-import { emptyOpsDataset, type OpsDataset } from "@/lib/ops/types";
+import { emptyOpsDataset, opsTeamFromParam, type OpsDataset } from "@/lib/ops/types";
 import { emptyPageData, loadPeDailyPage } from "@/lib/pe-daily/load";
 import type { PeDailyPageData } from "@/lib/pe-daily/types";
 import { createClient } from "@/lib/supabase/server";
@@ -22,6 +22,7 @@ interface WorkspacePageProps {
     view?: string | string[];
     date?: string | string[];
     tab?: string | string[];
+    team?: string | string[];
   }>;
 }
 
@@ -64,7 +65,7 @@ async function loadDailyReport(requestedDate: string | null, isAdmin: boolean) {
 
 export default async function WorkspacePage({ params, searchParams }: WorkspacePageProps) {
   const { workspaceSlug } = await params;
-  const { view, date, tab } = await searchParams;
+  const { view, date, tab, team } = await searchParams;
   const result = await resolveInitialDashboard(workspaceSlug, {
     envConfigured: hasSupabasePublicEnv(),
     createClient,
@@ -95,6 +96,7 @@ export default async function WorkspacePage({ params, searchParams }: WorkspaceP
       : dailyReport && view === "daily-report" ? "daily-report"
         : "projects";
   const initialTab = tab === "issues" ? "issues" : "merge";
+  const initialTeam = opsTeamFromParam(team);
 
   return (
     <DashboardShell
@@ -106,6 +108,7 @@ export default async function WorkspacePage({ params, searchParams }: WorkspaceP
       dailyReport={dailyReport}
       initialView={initialView}
       initialTab={initialTab}
+      initialTeam={initialTeam}
     />
   );
 }

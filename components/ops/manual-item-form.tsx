@@ -6,17 +6,17 @@ import { saveOpsManualItem } from "@/lib/ops/mutations";
 import {
   OPS_STATUSES,
   OPS_STATUS_LABELS,
+  OPS_TEAM_LABELS,
   isOpsStatus,
-  type OpsArea,
   type OpsRequest,
   type OpsStatus,
+  type OpsTeam,
 } from "@/lib/ops/types";
 import { createClient } from "@/lib/supabase/client";
-import { AreaOwnerFields, useAreaOwner } from "./area-owner-fields";
 
 export type ManualItemKind = "merge" | "issue";
 
-type FieldErrors = Partial<Record<"title" | "assignmentTime" | "closeDate" | "area", string>>;
+type FieldErrors = Partial<Record<"title" | "assignmentTime" | "closeDate", string>>;
 
 /** Wall-clock 'YYYY-MM-DDTHH:MM:SS' to the 'YYYY-MM-DDTHH:MM' a datetime-local input expects. */
 function toInputValue(value: string | null) {
@@ -30,14 +30,14 @@ function toStoredValue(value: string) {
 
 export function ManualItemForm({
   kind,
-  areas = [],
+  team,
   item,
   onClose,
   onSaved,
 }: {
   kind: ManualItemKind;
-  /** Needed for issues (Area select). */
-  areas?: OpsArea[];
+  /** The team a new item belongs to; editing keeps the item's own team. */
+  team: OpsTeam;
   /** The manual item being edited; omit to add a new one. */
   item?: OpsRequest;
   onClose: () => void;
@@ -53,7 +53,6 @@ export function ManualItemForm({
   const [assignmentTime, setAssignmentTime] = useState(toInputValue(item?.assignmentTime ?? null));
   const [closeDate, setCloseDate] = useState(toInputValue(item?.closeDate ?? null));
   const [closureCode, setClosureCode] = useState(item?.closureCode ?? "");
-  const areaOwner = useAreaOwner(areas, item?.areaId ?? null, item?.ownerName ?? "");
   const [errors, setErrors] = useState<FieldErrors>({});
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -64,6 +63,7 @@ export function ManualItemForm({
     if (!savingRef.current) onClose();
   }, [onClose]);
 
+  const itemTeam = item?.team ?? team;
   const heading = `${item ? "Edit" : "Add"} ${isIssue ? "issue" : "merge request"}`;
 
   function validate(): FieldErrors {
@@ -75,7 +75,6 @@ export function ManualItemForm({
     } else if (isClosed && assignmentTime && closeDate < assignmentTime) {
       found.closeDate = "Close time can't be earlier than the assignment time.";
     }
-    if (isIssue && !areaOwner.areaId) found.area = "Choose an area.";
     return found;
   }
 
@@ -92,7 +91,7 @@ export function ManualItemForm({
     try {
       await saveOpsManualItem(createClient(), {
         id: item?.id,
-        team: item?.team ?? "operations",
+        team: itemTeam,
         kind,
         interactionId: interactionId.trim(),
         status,
@@ -103,8 +102,6 @@ export function ManualItemForm({
         requestorName: requestor.trim(),
         assignedTo: assignee.trim(),
         closureCode: closureCode.trim(),
-        areaId: isIssue ? areaOwner.areaId : null,
-        ownerName: isIssue ? areaOwner.ownerToSave() : "",
       });
       onSaved();
     } catch (caught) {
@@ -122,6 +119,7 @@ export function ManualItemForm({
       onClose={handleClose}
       className="admin-modal ops-form-modal"
     >
+      <p className="eyebrow">{OPS_TEAM_LABELS[itemTeam]}</p>
       <h2 id="ops-manual-form-title">{heading}</h2>
       <form className="work-item-form" onSubmit={(event) => void submit(event)} noValidate>
         <div className="form-field">
@@ -172,9 +170,6 @@ export function ManualItemForm({
             />
           </div>
         </div>
-        {isIssue ? (
-          <AreaOwnerFields areas={areas} state={areaOwner} areaError={errors.area} idPrefix="ops-manual" />
-        ) : null}
         <div className="form-field">
           <label htmlFor="ops-manual-status">Status</label>
           <select

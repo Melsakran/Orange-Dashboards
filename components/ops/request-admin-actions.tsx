@@ -3,23 +3,21 @@
 import { useRef, useState, type ReactNode } from "react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { deleteOpsManualItem } from "@/lib/ops/mutations";
-import type { OpsArea, OpsRequest } from "@/lib/ops/types";
+import type { OpsRequest } from "@/lib/ops/types";
 import { createClient } from "@/lib/supabase/client";
 import { ManualItemForm } from "./manual-item-form";
-import { RouteIssueDialog } from "./route-issue-dialog";
 
 /** What admins need inside a request's details dialog. Omitted for visitors. */
 export interface OpsAdminContext {
-  areas: OpsArea[];
   /** Called after any change was saved (refreshes the page data). */
   onChanged: () => void;
 }
 
-type Mode = "view" | "edit" | "delete" | "route";
+type Mode = "view" | "edit" | "delete";
 
 /**
- * Admin actions for one request's details dialog: Edit and Delete for manual items, Route for
- * imported issues. While an action is open, `dialog` replaces the details dialog so only one
+ * Admin actions for one request's details dialog: Edit and Delete for manual items (imported rows
+ * are replaced by the next upload). While an action is open, `dialog` replaces the details dialog so only one
  * modal is mounted at a time.
  */
 export function useRequestAdmin({
@@ -39,8 +37,7 @@ export function useRequestAdmin({
   if (!admin) return { dialog: null, actions: null };
 
   const isManual = request.source === "manual";
-  const isImportedIssue = !isManual && !request.isMergeRequest;
-  if (!isManual && !isImportedIssue) return { dialog: null, actions: null };
+  if (!isManual) return { dialog: null, actions: null };
 
   function backToDetails() {
     setDeleteError(null);
@@ -73,14 +70,12 @@ export function useRequestAdmin({
     dialog = (
       <ManualItemForm
         kind={request.isMergeRequest ? "merge" : "issue"}
-        areas={admin.areas}
+        team={request.team}
         item={request}
         onClose={backToDetails}
         onSaved={saved}
       />
     );
-  } else if (mode === "route") {
-    dialog = <RouteIssueDialog request={request} areas={admin.areas} onClose={backToDetails} onSaved={saved} />;
   } else if (mode === "delete") {
     dialog = (
       <ConfirmDialog
@@ -99,16 +94,10 @@ export function useRequestAdmin({
 
   const actions = (
     <div className="ops-detail-actions">
-      {isManual ? (
-        <>
-          <button type="button" className="secondary-button" onClick={() => setMode("edit")}>Edit</button>
-          <button type="button" className="secondary-button delete-confirm-button" onClick={() => setMode("delete")}>
-            Delete
-          </button>
-        </>
-      ) : (
-        <button type="button" className="secondary-button" onClick={() => setMode("route")}>Route</button>
-      )}
+      <button type="button" className="secondary-button" onClick={() => setMode("edit")}>Edit</button>
+      <button type="button" className="secondary-button delete-confirm-button" onClick={() => setMode("delete")}>
+        Delete
+      </button>
     </div>
   );
 

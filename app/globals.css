@@ -3049,101 +3049,15 @@ footer {
   white-space: nowrap;
 }
 
-.ops-issue-filters {
-  grid-template-columns: 2fr repeat(3, 1fr);
-}
-
-@media (max-width: 720px) {
-  .ops-issue-filters {
-    grid-template-columns: 1fr;
-  }
-}
-
-.ops-escalate-flag {
-  display: inline-block;
-  margin-left: 8px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: #fdecea;
-  color: #b63027;
-  font-size: 11px;
-  font-weight: 750;
-  white-space: nowrap;
-}
-
-.ops-board {
-  display: grid;
-  gap: 18px;
-}
-
-.ops-board-group h3 {
-  margin: 0 0 10px;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.ops-board-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 12px;
-}
-
-.ops-board-card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  padding: 14px 16px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.ops-board-card:hover {
-  border-color: color-mix(in srgb, var(--orange) 45%, var(--border));
-}
-
-.ops-board-card[data-active="true"] {
-  border-color: var(--orange);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--orange) 35%, transparent);
-}
-
-.ops-board-card:focus-visible {
-  outline: 2px solid var(--orange);
-  outline-offset: 2px;
-}
-
-.ops-board-card-name {
-  font-weight: 800;
-}
-
-.ops-board-card-owner {
-  font-size: 13px;
-}
-
-.ops-board-card-meta {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.ops-board-card-stats {
-  display: flex;
-  gap: 12px;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.ops-board-card .ops-escalate-flag {
-  margin-left: 0;
-}
-
 .ops-tab-row {
   margin-bottom: 18px;
+}
+
+.ops-tab-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
 }
 
 .ops-tab-actions {
@@ -3155,63 +3069,6 @@ footer {
 
 .ops-form-modal {
   width: min(100%, 680px);
-}
-
-.ops-small-modal {
-  width: min(100%, 420px);
-}
-
-.ops-areas-modal {
-  width: min(100%, 860px);
-  max-height: calc(100vh - 48px);
-  overflow-y: auto;
-}
-
-.ops-areas-group h3 {
-  margin: 20px 0 8px;
-  font-size: 14px;
-}
-
-.ops-areas-list {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ops-area-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: start;
-}
-
-.ops-area-row .mutation-notice {
-  grid-column: 1 / -1;
-}
-
-.ops-area-fields {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.ops-area-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.ops-area-add-row {
-  padding-top: 10px;
-  border-top: 1px dashed var(--border);
-}
-
-@media (max-width: 720px) {
-  .ops-area-row,
-  .ops-area-fields {
-    grid-template-columns: 1fr;
-  }
 }
 
 .form-hint {

@@ -65,7 +65,7 @@ import { ProjectTierToggle } from "./project-tier-toggle";
 import { SegmentedToggle } from "@/components/ui/segmented-toggle";
 import { OpsRequestsView, type OpsRequestsTab } from "@/components/ops/ops-requests-view";
 import { PeDailyView } from "@/components/pe-daily/pe-daily-view";
-import type { OpsDataset } from "@/lib/ops/types";
+import type { OpsDataset, OpsTeam } from "@/lib/ops/types";
 import type { PeDailyPageData } from "@/lib/pe-daily/types";
 import { WorkspaceTag } from "./workspace-tag";
 import { updateWorkspaceTag } from "@/lib/data/workspace-mutations";
@@ -97,6 +97,7 @@ interface DashboardShellProps {
   };
   initialView?: DashboardView;
   initialTab?: OpsRequestsTab;
+  initialTeam?: OpsTeam;
 }
 
 interface EditorState {
@@ -322,6 +323,7 @@ export function DashboardShell({
   dailyReport,
   initialView = "projects",
   initialTab = "merge",
+  initialTeam = "operations",
 }: DashboardShellProps) {
   const realtime = useWorkspaceRealtime(initialDashboard, { enabled: source === "database" });
   const [workspace, setWorkspace] = useState(realtime.data);
@@ -333,8 +335,9 @@ export function DashboardShell({
   const [activeFilter, setActiveFilter] = useState<StatusFilter>("all");
   const [selectedTier, setSelectedTier] = useState<ProjectTier>("critical");
   const [view, setView] = useState<DashboardView>(initialView);
-  // Tab the Requests view opens on; reset when leaving it so it matches the cleared URL.
+  // Tab and team the Requests view opens on; reset when leaving it so they match the cleared URL.
   const [requestsTab, setRequestsTab] = useState<OpsRequestsTab>(initialTab);
+  const [requestsTeam, setRequestsTeam] = useState<OpsTeam>(initialTeam);
   const [liveVariant, setLiveVariant] = useState<LiveVariantFilter>("live");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorState | null>(null);
@@ -820,10 +823,15 @@ export function DashboardShell({
       url.searchParams.delete("view");
       url.searchParams.delete("date");
       url.searchParams.delete("tab");
+      url.searchParams.delete("team");
       setRequestsTab("merge");
+      setRequestsTeam("operations");
     } else {
       url.searchParams.set("view", next);
-      if (next !== "requests") url.searchParams.delete("tab");
+      if (next !== "requests") {
+        url.searchParams.delete("tab");
+        url.searchParams.delete("team");
+      }
     }
     window.history.replaceState(window.history.state, "", url);
   }
@@ -941,6 +949,7 @@ export function DashboardShell({
             loadError={requests.loadError}
             toolbar={viewToggle}
             initialTab={requestsTab}
+            initialTeam={requestsTeam}
           />
         ) : effectiveView === "daily-report" && dailyReport ? (
           <PeDailyView

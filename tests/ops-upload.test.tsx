@@ -18,6 +18,12 @@ const sampleCsv = readFileSync(resolve(import.meta.dirname, "fixtures/ops-reques
 const mergeCsv = readFileSync(resolve(import.meta.dirname, "fixtures/ops-requests-merge-sample.csv"));
 const emptyDataset = emptyOpsDataset();
 
+function selectTeam(name: string) {
+  return userEvent.click(
+    within(screen.getByRole("group", { name: "Team" })).getByRole("button", { name }),
+  );
+}
+
 function chooseFile() {
   return screen.getByLabelText("Choose a CSV or Excel file to upload");
 }
@@ -43,7 +49,7 @@ describe("Ops Requests upload", () => {
 
     const dialog = await screen.findByRole("dialog", { name: "export.csv" });
     expect(dialog).toHaveTextContent("19 requests found — 0 open, 0 in progress, 0 pending, 19 closed · 0 merge requests");
-    expect(dialog).toHaveTextContent("Replacing will update all imported Ops Requests data. Manually added items are kept.");
+    expect(dialog).toHaveTextContent("Replacing will update all imported Operations requests. Manually added items are kept.");
 
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -224,5 +230,80 @@ describe("Ops Requests upload", () => {
     await user.upload(chooseFile(), new File(["hello"], "notes.txt", { type: "text/plain" }));
     const dialog = await screen.findByRole("dialog", { name: "notes.txt" });
     expect(within(dialog).getByRole("alert")).toHaveTextContent("Upload a .csv or .xlsx file.");
+  });
+
+  describe("per team", () => {
+    it("uploads for Operations by default and names the team in the preview", async () => {
+      const user = userEvent.setup();
+      render(<OpsRequestsView dataset={emptyDataset} isAdmin />);
+
+      await user.upload(chooseFile(), new File([sampleCsv], "export.csv", { type: "text/csv" }));
+      const dialog = await screen.findByRole("dialog", { name: "export.csv" });
+      expect(dialog).toHaveTextContent("Upload for Operations");
+      expect(dialog).toHaveTextContent(
+        "Replacing will update all imported Operations requests. Manually added items are kept.",
+      );
+    });
+
+    it("uploads for the selected team: preview names it and the save sends it", async () => {
+      const user = userEvent.setup();
+      render(<OpsRequestsView dataset={emptyDataset} isAdmin />);
+      await selectTeam("Data Analytics");
+
+      expect(screen.getByRole("button", { name: "Upload" })).toBeInTheDocument();
+      await user.upload(chooseFile(), new File([sampleCsv], "export.csv", { type: "text/csv" }));
+      const dialog = await screen.findByRole("dialog", { name: "export.csv" });
+      expect(dialog).toHaveTextContent("Upload for Data Analytics");
+      expect(dialog).toHaveTextContent(
+        "Replacing will update all imported Data Analytics requests. Manually added items are kept.",
+      );
+
+      await user.click(within(dialog).getByRole("button", { name: "Replace data" }));
+      await vi.waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+      expect(replaceOpsRequests).toHaveBeenCalledWith(
+        fakeClient,
+        "data_analytics",
+        "export.csv",
+        expect.any(Array),
+      );
+    });
+
+    it("counts only the selected team's manual items as collisions", async () => {
+      const user = userEvent.setup();
+      const dataset = {
+        ...emptyDataset,
+        requests: [
+          makeOpsRequest({ interactionId: "SD1265202", source: "manual", team: "operations" }),
+          makeOpsRequest({ interactionId: "SD1265508", source: "manual", team: "operations" }),
+          makeOpsRequest({ interactionId: "SD1265508", source: "manual", team: "data_analytics" }),
+        ],
+      };
+      render(<OpsRequestsView dataset={dataset} isAdmin />);
+
+      await user.upload(chooseFile(), new File([sampleCsv], "export.csv", { type: "text/csv" }));
+      let dialog = await screen.findByRole("dialog", { name: "export.csv" });
+      expect(dialog).toHaveTextContent("2 manually added items with the same Interaction ID");
+      await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+      await selectTeam("Data Analytics");
+      await user.upload(chooseFile(), new File([sampleCsv], "export.csv", { type: "text/csv" }));
+      dialog = await screen.findByRole("dialog", { name: "export.csv" });
+      expect(dialog).toHaveTextContent("1 manually added item with the same Interaction ID");
+    });
+
+    it("keeps the reassurance when the other team's manual items collide", async () => {
+      const user = userEvent.setup();
+      const dataset = {
+        ...emptyDataset,
+        requests: [makeOpsRequest({ interactionId: "SD1265202", source: "manual", team: "operations" })],
+      };
+      render(<OpsRequestsView dataset={dataset} isAdmin />);
+      await selectTeam("Data Analytics");
+
+      await user.upload(chooseFile(), new File([sampleCsv], "export.csv", { type: "text/csv" }));
+      const dialog = await screen.findByRole("dialog", { name: "export.csv" });
+      expect(dialog).toHaveTextContent("Manually added items are kept.");
+      expect(dialog).not.toHaveTextContent("will be replaced by the file");
+    });
   });
 });

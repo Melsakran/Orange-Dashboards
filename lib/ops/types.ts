@@ -24,30 +24,16 @@ export const OPS_TEAM_LABELS: Record<OpsTeam, string> = {
   data_analytics: "Data Analytics",
 };
 
-export type OpsAreaGroup = "reporting" | "operations" | "demand";
+/** URL value for Data Analytics (`?team=analytics`); Operations is the default and stays out of the URL. */
+const ANALYTICS_PARAM = "analytics";
 
-export const OPS_AREA_GROUPS: readonly OpsAreaGroup[] = ["reporting", "operations", "demand"];
-
-export const OPS_AREA_GROUP_LABELS: Record<OpsAreaGroup, string> = {
-  reporting: "Reporting & Dashboarding SPOCs",
-  operations: "Data Lake Operations",
-  demand: "Demand Projects",
-};
-
-export interface OpsArea {
-  id: string;
-  group: OpsAreaGroup;
-  name: string;
-  ownerName: string;
-  reportsTo: string;
-  sortOrder: number;
+export function opsTeamFromParam(value: string | string[] | undefined): OpsTeam {
+  return value === ANALYTICS_PARAM ? "data_analytics" : "operations";
 }
 
-export interface OpsSettings {
-  escalationDays: number;
+export function opsTeamToParam(team: OpsTeam): string | null {
+  return team === "data_analytics" ? ANALYTICS_PARAM : null;
 }
-
-export const DEFAULT_OPS_SETTINGS: OpsSettings = { escalationDays: 5 };
 
 // Request timestamps are wall-clock values formatted as YYYY-MM-DDTHH:MM:SS with no timezone.
 export interface OpsRequest {
@@ -56,10 +42,6 @@ export interface OpsRequest {
   source: OpsSource;
   /** The team the request belongs to. */
   team: OpsTeam;
-  /** Owning area for issues; null for merge requests and unrouted issues. */
-  areaId: string | null;
-  /** Per-item owner override; empty means use the area's owner. */
-  ownerName: string;
   interactionId: string;
   status: OpsStatus;
   assignmentTime: string;
@@ -90,17 +72,11 @@ export interface OpsDataset {
   requests: OpsRequest[];
   /** The latest upload of each team; null when the team has none yet. */
   uploads: Record<OpsTeam, OpsUpload | null>;
-  /** Not loaded any more (always empty); removed with the ownership UI in Task 3. */
-  areas: OpsArea[];
-  /** Not loaded any more (always the default); removed with the ownership UI in Task 3. */
-  settings: OpsSettings;
 }
 
 export function emptyOpsDataset(): OpsDataset {
   return {
     requests: [],
     uploads: { operations: null, data_analytics: null },
-    areas: [],
-    settings: { ...DEFAULT_OPS_SETTINGS },
   };
 }

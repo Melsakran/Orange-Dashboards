@@ -29,16 +29,19 @@ function Metric({ label, value, meta }: { label: string; value: string | number;
 
 export function OpsKpis({
   kpis,
+  noun = "merge requests",
   statusFilter,
   onStatusFilterChange,
 }: {
   kpis: OpsKpiValues;
+  /** What the cards count, e.g. "merge requests" or "issues". */
+  noun?: string;
   statusFilter: OpsStatusFilter;
   onStatusFilterChange: (filter: OpsStatusFilter) => void;
 }) {
   return (
     <section className="kpi-grid kpi-grid-status" aria-label="Ops request overview">
-      <Metric label="Total requests" value={kpis.total} meta="Merge requests" />
+      <Metric label="Total requests" value={kpis.total} meta={noun.charAt(0).toUpperCase() + noun.slice(1)} />
       {OPS_STATUSES.map((status) => {
         const active = statusFilter === status;
         return (
