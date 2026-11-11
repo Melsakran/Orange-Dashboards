@@ -42,6 +42,20 @@ async function replace(db: PGlite, fileName: string, rows: unknown[]) {
   );
 }
 
+async function replaceForTeam(db: PGlite, fileName: string, rows: unknown[], team: string | null) {
+  return db.query<{ id: string }>(
+    "select public.replace_ops_requests($1, $2::jsonb, $3) as id",
+    [fileName, JSON.stringify(rows), team],
+  );
+}
+
+async function teamsByInteraction(db: PGlite) {
+  const result = await db.query<{ interaction_id: string; team: string; source: string }>(
+    "select interaction_id, team, source from public.ops_requests order by team, interaction_id",
+  );
+  return result.rows;
+}
+
 async function expectError(db: PGlite, run: () => Promise<unknown>, message: RegExp) {
   await db.exec("savepoint expected_error");
   let error: unknown;
@@ -124,6 +138,7 @@ describe("ops requests database", () => {
     await db.exec(read("supabase/migrations/0037_ops_in_progress_status.sql"));
     await db.exec(read("supabase/migrations/0040_ops_merge_requests.sql"));
     await db.exec(read("supabase/migrations/0041_ops_issues.sql"));
+    await db.exec(read("supabase/migrations/0042_ops_teams.sql"));
     await db.exec(`
       insert into auth.users (id) values ('${ADMIN_ID}'), ('${USER_ID}');
       insert into public.admin_users (auth_user_id, email, display_name)
@@ -261,18 +276,17 @@ describe("ops requests database", () => {
     expect(settings.rows).toEqual([{ escalation_days: 5 }]);
   });
 
-  it("defaults imported rows to the operations area and marks them as imports", async () => {
+  it("marks imported rows as imports and leaves their area empty", async () => {
     await setIdentity(db, "authenticated", ADMIN_ID);
     await replace(db, "wk46.csv", [
       row("SD1"),
       row("SD2", { request_type: "Merge Request", is_merge_request: true }),
     ]);
-    const operations = await areaId(db, "Data Lake Operations");
     const stored = await db.query<{ interaction_id: string; source: string; area_id: string | null; owner_name: string }>(
       "select interaction_id, source, area_id, owner_name from public.ops_requests order by interaction_id",
     );
     expect(stored.rows).toEqual([
-      { interaction_id: "SD1", source: "import", area_id: operations, owner_name: "" },
+      { interaction_id: "SD1", source: "import", area_id: null, owner_name: "" },
       { interaction_id: "SD2", source: "import", area_id: null, owner_name: "" },
     ]);
   });
@@ -292,20 +306,18 @@ describe("ops requests database", () => {
     expect(await requestByInteraction(db, "MAN-KEEP")).toMatchObject({ source: "manual", upload_id: null });
   });
 
-  it("keeps the routing of imported issues across uploads", async () => {
+  it("no longer carries routing across uploads: re-imported rows have no area or owner", async () => {
     await setIdentity(db, "authenticated", ADMIN_ID);
     await replace(db, "first.csv", [row("SD1"), row("SD2")]);
     const b2b = await areaId(db, "B2B");
     const sd1 = await requestByInteraction(db, "SD1");
     await rpc(db, "route_ops_request", sd1?.id, b2b, "Someone");
+    expect(await requestByInteraction(db, "SD1")).toMatchObject({ area_id: b2b, owner_name: "Someone" });
 
     await replace(db, "second.csv", [row("SD1"), row("SD2")]);
 
-    expect(await requestByInteraction(db, "SD1")).toMatchObject({ area_id: b2b, owner_name: "Someone" });
-    expect(await requestByInteraction(db, "SD2")).toMatchObject({
-      area_id: await areaId(db, "Data Lake Operations"),
-      owner_name: "",
-    });
+    expect(await requestByInteraction(db, "SD1")).toMatchObject({ area_id: null, owner_name: "" });
+    expect(await requestByInteraction(db, "SD2")).toMatchObject({ area_id: null, owner_name: "" });
   });
 
   it("saves manual items with generated ids, lowercase keys and normalized merge fields", async () => {
@@ -456,26 +468,6 @@ describe("ops requests database", () => {
     ]);
   });
 
-  it("carries routing only for rows that were issues in the previous upload", async () => {
-    await setIdentity(db, "authenticated", ADMIN_ID);
-    await replace(db, "first.csv", [
-      row("SD1", { request_type: "Merge Request", is_merge_request: true }),
-      row("SD2"),
-    ]);
-    const b2b = await areaId(db, "B2B");
-    const sd2 = await requestByInteraction(db, "SD2");
-    await rpc(db, "route_ops_request", sd2?.id, b2b, "Someone");
-
-    await replace(db, "second.csv", [row("SD1"), row("SD2", { request_type: "Merge Request", is_merge_request: true })]);
-
-    expect(await requestByInteraction(db, "SD1")).toMatchObject({
-      is_merge_request: false,
-      area_id: await areaId(db, "Data Lake Operations"),
-      owner_name: "",
-    });
-    expect(await requestByInteraction(db, "SD2")).toMatchObject({ is_merge_request: true, area_id: null, owner_name: "" });
-  });
-
   it("clears the merge request type when a manual merge request becomes an issue", async () => {
     await setIdentity(db, "authenticated", ADMIN_ID);
     const id = await rpc<string>(db, "save_ops_manual_item", manualItem({ kind: "merge" }));
@@ -487,6 +479,183 @@ describe("ops requests database", () => {
     expect(await db.query("select request_type, is_merge_request from public.ops_requests where id = $1", [id])).toMatchObject({
       rows: [{ request_type: "", is_merge_request: false }],
     });
+  });
+
+  it("puts existing rows and uploads in the operations team when 0042 is applied", async () => {
+    await db.exec("reset role");
+    await db.exec(`
+      alter table public.ops_requests drop constraint ops_requests_team_interaction_id_key;
+      alter table public.ops_requests drop constraint ops_requests_team_check;
+      alter table public.ops_request_uploads drop constraint ops_request_uploads_team_check;
+      alter table public.ops_requests drop column team;
+      alter table public.ops_request_uploads drop column team;
+      alter table public.ops_requests add constraint ops_requests_interaction_id_key unique (interaction_id);
+      insert into public.ops_request_uploads (id, file_name, row_count)
+        values ('52000000-0000-4000-8000-000000000001', 'old.csv', 1);
+      insert into public.ops_requests (interaction_id, status, assignment_time, source, upload_id)
+        values ('OLD-IMPORT', 'open', '2026-05-17T13:50:00', 'import', '52000000-0000-4000-8000-000000000001'),
+               ('OLD-MANUAL', 'open', '2026-05-17T13:50:00', 'manual', null);
+    `);
+
+    await db.exec(read("supabase/migrations/0042_ops_teams.sql"));
+    await db.exec(read("supabase/migrations/0042_ops_teams.sql"));
+
+    expect(await teamsByInteraction(db)).toEqual([
+      { interaction_id: "OLD-IMPORT", team: "operations", source: "import" },
+      { interaction_id: "OLD-MANUAL", team: "operations", source: "manual" },
+    ]);
+    const uploads = await db.query("select team from public.ops_request_uploads");
+    expect(uploads.rows).toEqual([{ team: "operations" }]);
+  });
+
+  it("is re-runnable and keeps a single team-scoped unique constraint", async () => {
+    await db.exec("reset role");
+    await db.exec(read("supabase/migrations/0042_ops_teams.sql"));
+    const constraints = await db.query<{ conname: string }>(
+      `select conname from pg_constraint
+        where conrelid = 'public.ops_requests'::regclass and contype = 'u' order by conname`,
+    );
+    expect(constraints.rows).toEqual([{ conname: "ops_requests_team_interaction_id_key" }]);
+  });
+
+  it("stores uploads per team and replaces only that team's imported rows", async () => {
+    await setIdentity(db, "authenticated", ADMIN_ID);
+    await replace(db, "ops.csv", [row("OPS1"), row("OPS2")]);
+    await rpc(db, "save_ops_manual_item", manualItem({ interaction_id: "OPS-MAN" }));
+    await rpc(db, "save_ops_manual_item", manualItem({ interaction_id: "DA-MAN", team: "data_analytics" }));
+    await rpc(db, "save_ops_manual_item", manualItem({ interaction_id: "DA-KEEP", team: "data_analytics" }));
+
+    const first = await replaceForTeam(db, "da1.csv", [row("DA1"), row("DA-MAN")], "data_analytics");
+    const second = await replaceForTeam(db, "da2.csv", [row("DA2"), row("DA-MAN")], "data_analytics");
+
+    expect(await teamsByInteraction(db)).toEqual([
+      { interaction_id: "DA-KEEP", team: "data_analytics", source: "manual" },
+      { interaction_id: "DA-MAN", team: "data_analytics", source: "import" },
+      { interaction_id: "DA2", team: "data_analytics", source: "import" },
+      { interaction_id: "OPS-MAN", team: "operations", source: "manual" },
+      { interaction_id: "OPS1", team: "operations", source: "import" },
+      { interaction_id: "OPS2", team: "operations", source: "import" },
+    ]);
+
+    const uploads = await db.query<{ id: string; team: string; file_name: string }>(
+      "select id, team, file_name from public.ops_request_uploads order by file_name",
+    );
+    expect(uploads.rows).toEqual([
+      { id: first.rows[0]?.id, team: "data_analytics", file_name: "da1.csv" },
+      { id: second.rows[0]?.id, team: "data_analytics", file_name: "da2.csv" },
+      { id: uploads.rows[2]?.id, team: "operations", file_name: "ops.csv" },
+    ]);
+    const stored = await db.query<{ interaction_id: string; team: string }>(
+      "select interaction_id, team from public.ops_requests where upload_id = $1",
+      [second.rows[0]?.id],
+    );
+    expect(stored.rows.map((entry) => entry.team)).toEqual(["data_analytics", "data_analytics"]);
+  });
+
+  it("does not remove manual items of the other team when their id is in the file", async () => {
+    await setIdentity(db, "authenticated", ADMIN_ID);
+    await rpc(db, "save_ops_manual_item", manualItem({ interaction_id: "SHARED" }));
+
+    await replaceForTeam(db, "da.csv", [row("SHARED")], "data_analytics");
+
+    expect(await teamsByInteraction(db)).toEqual([
+      { interaction_id: "SHARED", team: "data_analytics", source: "import" },
+      { interaction_id: "SHARED", team: "operations", source: "manual" },
+    ]);
+  });
+
+  it("allows the same interaction id in both teams but not twice in one file", async () => {
+    await setIdentity(db, "authenticated", ADMIN_ID);
+    await replaceForTeam(db, "ops.csv", [row("SD1")], "operations");
+    await replaceForTeam(db, "da.csv", [row("SD1")], "data_analytics");
+    expect(await teamsByInteraction(db)).toEqual([
+      { interaction_id: "SD1", team: "data_analytics", source: "import" },
+      { interaction_id: "SD1", team: "operations", source: "import" },
+    ]);
+
+    await expectError(
+      db,
+      () => replaceForTeam(db, "dupes.csv", [row("SD9"), row("SD9")], "data_analytics"),
+      /duplicate key/i,
+    );
+    expect(await teamsByInteraction(db)).toHaveLength(2);
+  });
+
+  it("treats the two-argument replace as the operations team", async () => {
+    await setIdentity(db, "authenticated", ADMIN_ID);
+    await replaceForTeam(db, "da.csv", [row("DA1")], "data_analytics");
+    await replace(db, "ops.csv", [row("OPS1")]);
+    await replace(db, "ops2.csv", [row("OPS2")]);
+
+    expect(await teamsByInteraction(db)).toEqual([
+      { interaction_id: "DA1", team: "data_analytics", source: "import" },
+      { interaction_id: "OPS2", team: "operations", source: "import" },
+    ]);
+    const uploads = await db.query("select team from public.ops_request_uploads where file_name = 'ops2.csv'");
+    expect(uploads.rows).toEqual([{ team: "operations" }]);
+  });
+
+  it("rejects an unknown team on upload", async () => {
+    await setIdentity(db, "authenticated", ADMIN_ID);
+    await replaceForTeam(db, "ops.csv", [row("SD1")], "operations");
+    await expectError(db, () => replaceForTeam(db, "x.csv", [row("SD2")], "finance"), /unknown team/);
+    await expectError(db, () => replaceForTeam(db, "x.csv", [row("SD2")], null), /unknown team/);
+    expect(await interactionIds(db)).toEqual(["SD1"]);
+  });
+
+  it("stores the team of manual items, defaulting to operations, and keeps it on update", async () => {
+    await setIdentity(db, "authenticated", ADMIN_ID);
+    const defaulted = await rpc<string>(db, "save_ops_manual_item", manualItem());
+    const analytics = await rpc<string>(db, "save_ops_manual_item", manualItem({ team: "data_analytics" }));
+    const blank = await rpc<string>(db, "save_ops_manual_item", manualItem({ team: "" }));
+    const teamOf = async (id: string) =>
+      (await db.query<{ team: string }>("select team from public.ops_requests where id = $1", [id])).rows[0]?.team;
+    expect(await teamOf(defaulted)).toBe("operations");
+    expect(await teamOf(analytics)).toBe("data_analytics");
+    expect(await teamOf(blank)).toBe("operations");
+
+    await rpc(db, "save_ops_manual_item", manualItem({ id: analytics, request_title: "Edited" }));
+    await rpc(db, "save_ops_manual_item", manualItem({ id: analytics, team: "operations", request_title: "Edited 2" }));
+    expect(await teamOf(analytics)).toBe("data_analytics");
+    expect(await db.query("select request_title from public.ops_requests where id = $1", [analytics])).toMatchObject({
+      rows: [{ request_title: "Edited 2" }],
+    });
+
+    await expectError(db, () => rpc(db, "save_ops_manual_item", manualItem({ team: "finance" })), /unknown team/);
+  });
+
+  it("checks duplicate manual ids per team and on update within the item's own team", async () => {
+    await setIdentity(db, "authenticated", ADMIN_ID);
+    await rpc(db, "save_ops_manual_item", manualItem({ interaction_id: "SD1" }));
+    await rpc(db, "save_ops_manual_item", manualItem({ interaction_id: "SD1", team: "data_analytics" }));
+    await expectError(
+      db,
+      () => rpc(db, "save_ops_manual_item", manualItem({ interaction_id: "SD1", team: "data_analytics" })),
+      /already exists/,
+    );
+
+    const other = await rpc<string>(db, "save_ops_manual_item", manualItem({ interaction_id: "SD2", team: "data_analytics" }));
+    await expectError(
+      db,
+      () => rpc(db, "save_ops_manual_item", manualItem({ id: other, interaction_id: "SD1" })),
+      /already exists/,
+    );
+    await rpc(db, "save_ops_manual_item", manualItem({ id: other, interaction_id: "SD3" }));
+    expect(await teamsByInteraction(db)).toEqual([
+      { interaction_id: "SD1", team: "data_analytics", source: "manual" },
+      { interaction_id: "SD3", team: "data_analytics", source: "manual" },
+      { interaction_id: "SD1", team: "operations", source: "manual" },
+    ]);
+  });
+
+  it("restricts the three-argument replace to admins", async () => {
+    const run = () => replaceForTeam(db, "a.csv", [row("SD1")], "data_analytics");
+    await setIdentity(db, "authenticated", USER_ID);
+    await expectError(db, run, /admin access required/i);
+    await db.exec("reset role");
+    await setIdentity(db, "anon");
+    await expectError(db, run, /permission denied/i);
+    await db.exec("reset role");
   });
 
   it("restricts every new function to admins", async () => {
