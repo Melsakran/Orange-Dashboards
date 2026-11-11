@@ -429,6 +429,66 @@ describe("ops requests database", () => {
     await expectError(db, () => rpc(db, "save_ops_settings", 366), /between 1 and 365/);
   });
 
+  it("backfills the operations area for unrouted imported issues when 0041 is re-run", async () => {
+    await db.exec("reset role");
+    const b2b = await areaId(db, "B2B");
+    const operations = await areaId(db, "Data Lake Operations");
+    await db.query(
+      `insert into public.ops_requests (interaction_id, status, assignment_time, is_merge_request, source, area_id, owner_name)
+       values
+         ('OLD-ISSUE', 'open', '2026-05-17T13:50:00', false, 'import', null, ''),
+         ('OLD-MERGE', 'open', '2026-05-17T13:50:00', true, 'import', null, ''),
+         ('OLD-ROUTED', 'open', '2026-05-17T13:50:00', false, 'import', $1, 'Someone'),
+         ('OLD-MANUAL', 'open', '2026-05-17T13:50:00', false, 'manual', null, '')`,
+      [b2b],
+    );
+
+    await db.exec(read("supabase/migrations/0041_ops_issues.sql"));
+
+    const stored = await db.query<{ interaction_id: string; area_id: string | null; owner_name: string }>(
+      "select interaction_id, area_id, owner_name from public.ops_requests order by interaction_id",
+    );
+    expect(stored.rows).toEqual([
+      { interaction_id: "OLD-ISSUE", area_id: operations, owner_name: "" },
+      { interaction_id: "OLD-MANUAL", area_id: null, owner_name: "" },
+      { interaction_id: "OLD-MERGE", area_id: null, owner_name: "" },
+      { interaction_id: "OLD-ROUTED", area_id: b2b, owner_name: "Someone" },
+    ]);
+  });
+
+  it("carries routing only for rows that were issues in the previous upload", async () => {
+    await setIdentity(db, "authenticated", ADMIN_ID);
+    await replace(db, "first.csv", [
+      row("SD1", { request_type: "Merge Request", is_merge_request: true }),
+      row("SD2"),
+    ]);
+    const b2b = await areaId(db, "B2B");
+    const sd2 = await requestByInteraction(db, "SD2");
+    await rpc(db, "route_ops_request", sd2?.id, b2b, "Someone");
+
+    await replace(db, "second.csv", [row("SD1"), row("SD2", { request_type: "Merge Request", is_merge_request: true })]);
+
+    expect(await requestByInteraction(db, "SD1")).toMatchObject({
+      is_merge_request: false,
+      area_id: await areaId(db, "Data Lake Operations"),
+      owner_name: "",
+    });
+    expect(await requestByInteraction(db, "SD2")).toMatchObject({ is_merge_request: true, area_id: null, owner_name: "" });
+  });
+
+  it("clears the merge request type when a manual merge request becomes an issue", async () => {
+    await setIdentity(db, "authenticated", ADMIN_ID);
+    const id = await rpc<string>(db, "save_ops_manual_item", manualItem({ kind: "merge" }));
+    expect(await db.query("select request_type from public.ops_requests where id = $1", [id])).toMatchObject({
+      rows: [{ request_type: "Merge Request" }],
+    });
+
+    await rpc(db, "save_ops_manual_item", manualItem({ id, kind: "issue" }));
+    expect(await db.query("select request_type, is_merge_request from public.ops_requests where id = $1", [id])).toMatchObject({
+      rows: [{ request_type: "", is_merge_request: false }],
+    });
+  });
+
   it("restricts every new function to admins", async () => {
     const calls: Array<[string, () => Promise<unknown>]> = [
       ["save_ops_manual_item", () => rpc(db, "save_ops_manual_item", manualItem())],

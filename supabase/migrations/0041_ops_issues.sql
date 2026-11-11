@@ -40,6 +40,11 @@ alter table public.ops_requests
 
 alter table public.ops_requests alter column upload_id drop not null;
 
+-- Rows imported before this migration have no area: put imported issues in the on-call area.
+update public.ops_requests
+   set area_id = (select id from public.ops_areas where area_group = 'operations' order by sort_order, name limit 1)
+ where source = 'import' and not is_merge_request and area_id is null;
+
 alter table public.ops_requests drop constraint if exists ops_requests_source_check;
 alter table public.ops_requests
   add constraint ops_requests_source_check check (source in ('import', 'manual'));
@@ -102,7 +107,7 @@ begin
          )
     into v_routing
     from public.ops_requests
-   where source = 'import';
+   where source = 'import' and not is_merge_request;
 
   select id into v_operations_area
     from public.ops_areas
@@ -254,7 +259,7 @@ begin
            assigned_to_key = lower(v_assignee),
            closure_code = btrim(coalesce(p_item ->> 'closure_code', '')),
            is_merge_request = v_is_merge,
-           request_type = case when v_is_merge then 'Merge Request' else request_type end,
+           request_type = case when v_is_merge then 'Merge Request' when request_type = 'Merge Request' then '' else request_type end,
            area_id = v_area,
            owner_name = v_owner
      where id = v_id and source = 'manual';
