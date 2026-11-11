@@ -1,5 +1,6 @@
 -- Data Lake Operations Requests: every item belongs to a team (Operations or Data Analytics);
 -- uploads are per team. The ownership tables from 0041 stay but are no longer used. Re-runnable.
+-- Run the whole file as one batch. If 0041 is ever pasted again, run this file again afterwards.
 
 alter table public.ops_requests
   add column if not exists team text not null default 'operations';

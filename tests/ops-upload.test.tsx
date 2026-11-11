@@ -25,7 +25,7 @@ function selectTeam(name: string) {
 }
 
 function chooseFile() {
-  return screen.getByLabelText("Choose a CSV or Excel file to upload");
+  return screen.getByLabelText(/^Choose a CSV or Excel file to upload for /);
 }
 
 describe("Ops Requests upload", () => {

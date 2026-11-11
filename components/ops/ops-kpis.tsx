@@ -41,7 +41,7 @@ export function OpsKpis({
 }) {
   return (
     <section className="kpi-grid kpi-grid-status" aria-label="Ops request overview">
-      <Metric label="Total requests" value={kpis.total} meta={noun.charAt(0).toUpperCase() + noun.slice(1)} />
+      <Metric label={`Total ${noun}`} value={kpis.total} meta="For the selected team" />
       {OPS_STATUSES.map((status) => {
         const active = statusFilter === status;
         return (

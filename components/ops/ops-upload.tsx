@@ -61,6 +61,7 @@ function UploadReview({
     .map((status) => `${counts[status]} ${OPS_STATUS_LABELS[status].toLowerCase()}`)
     .join(", ");
   const mergeCount = result.requests.filter((request) => request.isMergeRequest).length;
+  const issueCount = result.requests.length - mergeCount;
   // The database replaces a manual item whose Interaction ID appears in the file.
   const fileIds = new Set(result.requests.map((request) => request.interactionId));
   const collisions = [...manualInteractionIds].filter((id) => fileIds.has(id)).length;
@@ -68,7 +69,8 @@ function UploadReview({
     <>
       <p className="ops-upload-summary">
         {result.requests.length} requests found — {breakdown} · {mergeCount} merge{" "}
-        {mergeCount === 1 ? "request" : "requests"}
+        {mergeCount === 1 ? "request" : "requests"} · {issueCount}{" "}
+        {issueCount === 1 ? "issue" : "issues"}
       </p>
       {collisions > 0 ? (
         <p>
@@ -125,7 +127,7 @@ export function OpsUpload({
   const teamLabel = OPS_TEAM_LABELS[team];
   return (
     <>
-      <FilePickerButton inputLabel="Choose a CSV or Excel file to upload" onFile={(file) => void chooseFile(file)} />
+      <FilePickerButton inputLabel={`Choose a CSV or Excel file to upload for ${teamLabel}`} onFile={(file) => void chooseFile(file)} />
       {state.phase !== "idle" ? (
         <ModalDialog
           labelledBy="ops-upload-title"

@@ -99,7 +99,7 @@ describe("OpsRequestsView", () => {
     expect(within(tabs).getByRole("button", { name: "Issues" })).toHaveAttribute("aria-pressed", "false");
 
     const overview = screen.getByRole("region", { name: "Ops request overview" });
-    expect(within(overview).getByText("Total requests").nextSibling).toHaveTextContent("2");
+    expect(within(overview).getByText("Total merge requests").nextSibling).toHaveTextContent("2");
     expect(within(overview).getByRole("button", { name: /^Open/ })).toHaveTextContent("1");
     expect(within(overview).getByRole("button", { name: /^Pending/ })).toHaveTextContent("0");
     expect(within(overview).getByRole("button", { name: /^In Progress/ })).toHaveTextContent("0");
@@ -136,10 +136,7 @@ describe("OpsRequestsView", () => {
     expect(screen.getByRole("button", { name: "Issues" })).toHaveAttribute("aria-pressed", "true");
     expect(window.location.search).toBe("?view=requests&tab=issues");
     const overview = screen.getByRole("region", { name: "Ops request overview" });
-    expect(within(overview).getByText("Total requests").nextSibling).toHaveTextContent("4");
-    expect(within(overview).getByText("Total requests").nextElementSibling?.nextElementSibling).toHaveTextContent(
-      "Issues",
-    );
+    expect(within(overview).getByText("Total issues").nextSibling).toHaveTextContent("4");
     expect(screen.getByRole("region", { name: "Requests" })).toHaveTextContent("4 of 4 shown");
     expect(screen.getByRole("region", { name: "Closure codes" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "By requestor" })).toBeInTheDocument();
@@ -238,7 +235,7 @@ describe("OpsRequestsView", () => {
 
       expect(visibleIds().sort()).toEqual([...ids].sort());
       const overview = screen.getByRole("region", { name: "Ops request overview" });
-      expect(within(overview).getByText("Total requests").nextSibling).toHaveTextContent(String(ids.length));
+      expect(within(overview).getByText(/^Total (merge requests|issues)$/).nextSibling).toHaveTextContent(String(ids.length));
     });
 
     it("switches team, keeps the tab, and syncs the team param (Operations leaves the URL)", async () => {
