@@ -130,9 +130,6 @@ export function OpsTicketList({
                   </td>
                   <td>
                     {request.requestTitle || "—"}
-                    {request.isMergeRequest ? (
-                      <span className="ops-merge-flag">Merge request</span>
-                    ) : null}
                     {request.source === "manual" ? (
                       <span className="ops-manual-flag">Manual</span>
                     ) : null}
