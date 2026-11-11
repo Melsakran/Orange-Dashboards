@@ -15,6 +15,15 @@ export function isOpsStatus(value: string): value is OpsStatus {
 
 export type OpsSource = "import" | "manual";
 
+export type OpsTeam = "operations" | "data_analytics";
+
+export const OPS_TEAMS: readonly OpsTeam[] = ["operations", "data_analytics"];
+
+export const OPS_TEAM_LABELS: Record<OpsTeam, string> = {
+  operations: "Operations",
+  data_analytics: "Data Analytics",
+};
+
 export type OpsAreaGroup = "reporting" | "operations" | "demand";
 
 export const OPS_AREA_GROUPS: readonly OpsAreaGroup[] = ["reporting", "operations", "demand"];
@@ -45,6 +54,8 @@ export interface OpsRequest {
   /** Database id; empty before the request is saved. */
   id: string;
   source: OpsSource;
+  /** The team the request belongs to. */
+  team: OpsTeam;
   /** Owning area for issues; null for merge requests and unrouted issues. */
   areaId: string | null;
   /** Per-item owner override; empty means use the area's owner. */
@@ -68,6 +79,7 @@ export interface OpsRequest {
 }
 
 export interface OpsUpload {
+  team: OpsTeam;
   uploadedAt: string;
   uploadedByEmail: string | null;
   fileName: string;
@@ -76,11 +88,19 @@ export interface OpsUpload {
 
 export interface OpsDataset {
   requests: OpsRequest[];
-  upload: OpsUpload | null;
+  /** The latest upload of each team; null when the team has none yet. */
+  uploads: Record<OpsTeam, OpsUpload | null>;
+  /** Not loaded any more (always empty); removed with the ownership UI in Task 3. */
   areas: OpsArea[];
+  /** Not loaded any more (always the default); removed with the ownership UI in Task 3. */
   settings: OpsSettings;
 }
 
 export function emptyOpsDataset(): OpsDataset {
-  return { requests: [], upload: null, areas: [], settings: { ...DEFAULT_OPS_SETTINGS } };
+  return {
+    requests: [],
+    uploads: { operations: null, data_analytics: null },
+    areas: [],
+    settings: { ...DEFAULT_OPS_SETTINGS },
+  };
 }

@@ -184,6 +184,7 @@ describe("Add merge request", () => {
     await vi.waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
     expect(saveOpsManualItem).toHaveBeenCalledWith(fakeClient, {
       id: undefined,
+      team: "operations",
       kind: "merge",
       interactionId: "",
       status: "closed",

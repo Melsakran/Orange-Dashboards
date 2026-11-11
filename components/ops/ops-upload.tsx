@@ -112,7 +112,7 @@ export function OpsUpload({
     read: async (file) => normalizeRequests(await parseSheetFile(file)),
     canSave: (result) => result.ok,
     save: async (fileName, result) => {
-      if (result.ok) await replaceOpsRequests(createClient(), fileName, result.requests);
+      if (result.ok) await replaceOpsRequests(createClient(), "operations", fileName, result.requests);
     },
     onSaved: () => onUploaded(),
   });

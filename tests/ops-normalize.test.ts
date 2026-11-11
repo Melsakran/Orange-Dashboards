@@ -63,6 +63,7 @@ describe("normalizeRequests", () => {
     expect(result.requests[0]).toEqual({
       id: "",
       source: "import",
+      team: "operations",
       areaId: null,
       ownerName: "",
       interactionId: "SD1265202",

@@ -109,8 +109,8 @@ describe("Ops Requests upload", () => {
     await user.click(within(dialog).getByRole("button", { name: "Replace data" }));
 
     await vi.waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
-    expect(replaceOpsRequests).toHaveBeenCalledWith(fakeClient, "export.csv", expect.any(Array));
-    expect(replaceOpsRequests.mock.calls[0][2]).toHaveLength(19);
+    expect(replaceOpsRequests).toHaveBeenCalledWith(fakeClient, "operations", "export.csv", expect.any(Array));
+    expect(replaceOpsRequests.mock.calls[0][3]).toHaveLength(19);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 

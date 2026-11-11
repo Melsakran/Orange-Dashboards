@@ -5,6 +5,7 @@ export function makeOpsRequest(overrides: Partial<OpsRequest> = {}): OpsRequest 
   return {
     id: `${interactionId}-id`,
     source: "import",
+    team: "operations",
     areaId: null,
     ownerName: "",
     interactionId: "SD1000",

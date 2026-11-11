@@ -22,11 +22,15 @@ const dataset: OpsDataset = {
       closureCode: "",
     }),
   ],
-  upload: {
-    uploadedAt: "2026-10-22T07:45:00Z",
-    uploadedByEmail: "admin@example.com",
-    fileName: "export.csv",
-    rowCount: 5,
+  uploads: {
+    operations: {
+      team: "operations",
+      uploadedAt: "2026-10-22T07:45:00Z",
+      uploadedByEmail: "admin@example.com",
+      fileName: "export.csv",
+      rowCount: 5,
+    },
+    data_analytics: null,
   },
 };
 

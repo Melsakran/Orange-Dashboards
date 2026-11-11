@@ -92,6 +92,7 @@ export function ManualItemForm({
     try {
       await saveOpsManualItem(createClient(), {
         id: item?.id,
+        team: item?.team ?? "operations",
         kind,
         interactionId: interactionId.trim(),
         status,

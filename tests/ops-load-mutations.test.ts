@@ -2,7 +2,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadOpsDataset, mapOpsRequestRow, OPS_PAGE_SIZE } from "@/lib/ops/load";
-import { emptyOpsDataset } from "@/lib/ops/types";
+import { emptyOpsDataset, OPS_TEAM_LABELS, OPS_TEAMS } from "@/lib/ops/types";
 import { replaceOpsRequests, toReplaceRows } from "@/lib/ops/mutations";
 import type { Database, Tables } from "@/types/database";
 import { makeOpsRequest } from "./fixtures/ops-requests";
@@ -29,24 +29,39 @@ function dbRow(id: string, overrides: Partial<Tables<"ops_requests">> = {}): Tab
     source: "import",
     area_id: null,
     owner_name: "",
+    team: "operations",
+    ...overrides,
+  };
+}
+
+function uploadRow(
+  team: "operations" | "data_analytics",
+  overrides: Partial<Tables<"ops_request_uploads">> = {},
+): Tables<"ops_request_uploads"> {
+  return {
+    id: `upload-${team}`,
+    uploaded_at: "2026-10-22T07:45:00+00:00",
+    uploaded_by: "admin",
+    uploaded_by_email: "admin@example.com",
+    file_name: `${team}.csv`,
+    row_count: 3,
+    team,
     ...overrides,
   };
 }
 
 function fakeClient(options: {
   pages?: Tables<"ops_requests">[][];
-  upload?: Tables<"ops_request_uploads"> | null;
+  uploads?: Partial<Record<"operations" | "data_analytics", Tables<"ops_request_uploads">>>;
   requestsError?: { message: string };
   uploadError?: { message: string };
-  areas?: Tables<"ops_areas">[];
-  settings?: Tables<"ops_settings"> | null;
-  areasError?: { message: string };
-  settingsError?: { message: string };
 }) {
   const ranges: Array<[number, number]> = [];
-  const areaOrders: Array<Array<[string, boolean | undefined]>> = [];
+  const tables: string[] = [];
+  const uploadQueries: Array<{ eq: Array<[string, unknown]>; order: Array<[string, boolean | undefined]>; limit: number[] }> = [];
   const client = {
     from(table: string) {
+      tables.push(table);
       if (table === "ops_requests") {
         const builder = {
           select: () => builder,
@@ -59,128 +74,107 @@ function fakeClient(options: {
         };
         return builder;
       }
-      if (table === "ops_areas") {
-        const orders: Array<[string, boolean | undefined]> = [];
-        areaOrders.push(orders);
-        const builder = {
-          select: () => builder,
-          order: (column: string, opts?: { ascending?: boolean }) => {
-            orders.push([column, opts?.ascending]);
-            return builder;
-          },
-          then: (resolve: (value: unknown) => unknown) =>
-            resolve(
-              options.areasError
-                ? { data: null, error: options.areasError }
-                : { data: options.areas ?? [], error: null },
-            ),
-        };
-        return builder;
-      }
-      if (table === "ops_settings") {
-        const builder = {
-          select: () => builder,
-          maybeSingle: () => Promise.resolve(
-            options.settingsError
-              ? { data: null, error: options.settingsError }
-              : { data: options.settings ?? null, error: null },
-          ),
-        };
-        return builder;
-      }
+      if (table !== "ops_request_uploads") throw new Error(`unexpected table ${table}`);
+      const query = { eq: [] as Array<[string, unknown]>, order: [] as Array<[string, boolean | undefined]>, limit: [] as number[] };
+      uploadQueries.push(query);
       const builder = {
         select: () => builder,
-        order: () => builder,
-        limit: () => builder,
-        maybeSingle: () => Promise.resolve(
-          options.uploadError
-            ? { data: null, error: options.uploadError }
-            : { data: options.upload ?? null, error: null },
-        ),
+        eq: (column: string, value: unknown) => {
+          query.eq.push([column, value]);
+          return builder;
+        },
+        order: (column: string, opts?: { ascending?: boolean }) => {
+          query.order.push([column, opts?.ascending]);
+          return builder;
+        },
+        limit: (count: number) => {
+          query.limit.push(count);
+          return builder;
+        },
+        maybeSingle: () => {
+          if (options.uploadError) return Promise.resolve({ data: null, error: options.uploadError });
+          const team = query.eq.find(([column]) => column === "team")?.[1] as
+            | "operations"
+            | "data_analytics"
+            | undefined;
+          return Promise.resolve({ data: (team && options.uploads?.[team]) ?? null, error: null });
+        },
       };
       return builder;
     },
   };
-  return { client: client as unknown as SupabaseClient<Database>, ranges, areaOrders };
+  return { client: client as unknown as SupabaseClient<Database>, ranges, tables, uploadQueries };
 }
 
 describe("loadOpsDataset", () => {
   it("returns an empty dataset without a Supabase client", async () => {
     expect(await loadOpsDataset(null)).toEqual(emptyOpsDataset());
-    expect(emptyOpsDataset()).toEqual({
-      requests: [],
-      upload: null,
-      areas: [],
-      settings: { escalationDays: 5 },
-    });
+    expect(emptyOpsDataset().requests).toEqual([]);
+    expect(emptyOpsDataset().uploads).toEqual({ operations: null, data_analytics: null });
   });
 
-  it("pages through every request and maps the latest upload", async () => {
+  it("exposes the two teams and their labels", () => {
+    expect(OPS_TEAMS).toEqual(["operations", "data_analytics"]);
+    expect(OPS_TEAM_LABELS).toEqual({ operations: "Operations", data_analytics: "Data Analytics" });
+  });
+
+  it("pages through every request, maps team, and loads the latest upload per team", async () => {
     const firstPage = Array.from({ length: OPS_PAGE_SIZE }, (_, index) => dbRow(`SD${index}`));
-    const { client, ranges } = fakeClient({
-      pages: [firstPage, [dbRow("SDlast")]],
-      upload: {
-        id: "upload-1",
-        uploaded_at: "2026-10-22T07:45:00+00:00",
-        uploaded_by: "admin",
-        uploaded_by_email: "admin@example.com",
-        file_name: "export.csv",
-        row_count: 1001,
+    const { client, ranges, uploadQueries } = fakeClient({
+      pages: [firstPage, [dbRow("SDlast", { team: "data_analytics" })]],
+      uploads: {
+        operations: uploadRow("operations", { file_name: "export.csv", row_count: 1001 }),
+        data_analytics: uploadRow("data_analytics", {
+          uploaded_by_email: null,
+          file_name: "da.csv",
+          row_count: 7,
+        }),
       },
     });
     const dataset = await loadOpsDataset(client);
     expect(ranges).toEqual([[0, 999], [1000, 1999]]);
     expect(dataset.requests).toHaveLength(1001);
-    expect(dataset.upload).toEqual({
+    expect(dataset.requests[0].team).toBe("operations");
+    expect(dataset.requests[1000].team).toBe("data_analytics");
+    expect(dataset.uploads.operations).toEqual({
+      team: "operations",
       uploadedAt: "2026-10-22T07:45:00+00:00",
       uploadedByEmail: "admin@example.com",
       fileName: "export.csv",
       rowCount: 1001,
     });
+    expect(dataset.uploads.data_analytics).toEqual({
+      team: "data_analytics",
+      uploadedAt: "2026-10-22T07:45:00+00:00",
+      uploadedByEmail: null,
+      fileName: "da.csv",
+      rowCount: 7,
+    });
+    expect(uploadQueries.map((query) => query.eq)).toEqual([
+      [["team", "operations"]],
+      [["team", "data_analytics"]],
+    ]);
+    for (const query of uploadQueries) {
+      expect(query.order).toEqual([["uploaded_at", false]]);
+      expect(query.limit).toEqual([1]);
+    }
   });
 
-  it("loads areas ordered by group, sort order and name, and the settings", async () => {
-    const area = (id: string, group: string, name: string, sort: number): Tables<"ops_areas"> => ({
-      id,
-      area_group: group,
-      name,
-      owner_name: `${name} owner`,
-      reports_to: "Boss",
-      sort_order: sort,
-    });
-    const { client, areaOrders } = fakeClient({
-      areas: [
-        area("a3", "demand", "Promo", 1),
-        area("a1", "reporting", "CVM", 0),
-        area("a2", "operations", "Ops", 0),
-        area("a0", "reporting", "B2B", 0),
-      ],
-      settings: { id: true, escalation_days: 9 },
-    });
+  it("leaves a team without uploads as null", async () => {
+    const { client } = fakeClient({ uploads: { operations: uploadRow("operations") } });
     const dataset = await loadOpsDataset(client);
-    expect(areaOrders[0]).toEqual([["sort_order", true], ["name", true]]);
-    expect(dataset.areas.map((entry) => entry.id)).toEqual(["a0", "a1", "a2", "a3"]);
-    expect(dataset.areas[0]).toEqual({
-      id: "a0",
-      group: "reporting",
-      name: "B2B",
-      ownerName: "B2B owner",
-      reportsTo: "Boss",
-      sortOrder: 0,
-    });
-    expect(dataset.settings).toEqual({ escalationDays: 9 });
+    expect(dataset.uploads.operations).not.toBeNull();
+    expect(dataset.uploads.data_analytics).toBeNull();
   });
 
-  it("falls back to default settings when none are stored", async () => {
-    const dataset = await loadOpsDataset(fakeClient({ settings: null }).client);
-    expect(dataset.settings).toEqual({ escalationDays: 5 });
+  it("no longer loads areas or settings", async () => {
+    const { client, tables } = fakeClient({});
+    const dataset = await loadOpsDataset(client);
+    expect(new Set(tables)).toEqual(new Set(["ops_requests", "ops_request_uploads"]));
+    expect(dataset.areas).toEqual([]);
   });
 
   it("throws a readable error when loading fails", async () => {
-    await expect(loadOpsDataset(fakeClient({ areasError: { message: "areas down" } }).client))
-      .rejects.toThrow("Could not load Ops Requests: areas down");
-    await expect(loadOpsDataset(fakeClient({ settingsError: { message: "settings down" } }).client))
-      .rejects.toThrow("Could not load Ops Requests: settings down");
     await expect(loadOpsDataset(fakeClient({ requestsError: { message: "boom" } }).client))
       .rejects.toThrow("Could not load Ops Requests: boom");
     await expect(loadOpsDataset(fakeClient({ uploadError: { message: "nope" } }).client))
@@ -197,9 +191,11 @@ describe("mapOpsRequestRow", () => {
       source: "manual",
       area_id: "area-1",
       owner_name: "Mona",
+      team: "data_analytics",
     }))).toEqual({
       id: "uuid-SD1",
       source: "manual",
+      team: "data_analytics",
       areaId: "area-1",
       ownerName: "Mona",
       interactionId: "SD1",
@@ -231,11 +227,12 @@ describe("replaceOpsRequests", () => {
       requestType: "Merge Request",
       isMergeRequest: true,
     });
-    const id = await replaceOpsRequests({ rpc } as unknown as SupabaseClient<Database>, "export.csv", [request]);
+    const id = await replaceOpsRequests({ rpc } as unknown as SupabaseClient<Database>, "data_analytics", "export.csv", [request]);
     expect(id).toBe("upload-2");
     expect(rpc).toHaveBeenCalledWith("replace_ops_requests", {
       p_file_name: "export.csv",
       p_rows: toReplaceRows([request]),
+      p_team: "data_analytics",
     });
     expect(toReplaceRows([request])[0]).toEqual({
       interaction_id: "SD7",
@@ -258,15 +255,15 @@ describe("replaceOpsRequests", () => {
 
   it("explains permission and other failures", async () => {
     const denied = vi.fn().mockResolvedValue({ data: null, error: { message: "admin access required" } });
-    await expect(replaceOpsRequests({ rpc: denied } as unknown as SupabaseClient<Database>, "a.csv", []))
+    await expect(replaceOpsRequests({ rpc: denied } as unknown as SupabaseClient<Database>, "operations", "a.csv", []))
       .rejects.toThrow("Only admins can upload Ops Requests.");
 
     const broken = vi.fn().mockResolvedValue({ data: null, error: { message: "timeout" } });
-    await expect(replaceOpsRequests({ rpc: broken } as unknown as SupabaseClient<Database>, "a.csv", []))
+    await expect(replaceOpsRequests({ rpc: broken } as unknown as SupabaseClient<Database>, "operations", "a.csv", []))
       .rejects.toThrow("Upload failed: timeout");
 
     const empty = vi.fn().mockResolvedValue({ data: null, error: null });
-    await expect(replaceOpsRequests({ rpc: empty } as unknown as SupabaseClient<Database>, "a.csv", []))
+    await expect(replaceOpsRequests({ rpc: empty } as unknown as SupabaseClient<Database>, "operations", "a.csv", []))
       .rejects.toThrow("Upload failed: no upload id was returned.");
   });
 });

@@ -21,6 +21,7 @@ const denied = { error: { message: "admin access required" } };
 const broken = { error: { message: "timeout" } };
 
 const item: OpsManualItemInput = {
+  team: "operations",
   kind: "issue",
   interactionId: "",
   status: "open",
@@ -42,6 +43,7 @@ describe("saveOpsManualItem", () => {
     expect(rpc).toHaveBeenCalledWith("save_ops_manual_item", {
       p_item: {
         id: null,
+        team: "operations",
         kind: "issue",
         interaction_id: "",
         status: "open",
@@ -62,6 +64,24 @@ describe("saveOpsManualItem", () => {
     const { rpc, client } = clientWith({ data: "item-9" });
     await saveOpsManualItem(client, { ...item, id: "item-9", kind: "merge", areaId: null });
     expect(rpc.mock.calls[0][1].p_item).toMatchObject({ id: "item-9", kind: "merge", area_id: null });
+  });
+
+  it("sends the selected team", async () => {
+    const { rpc, client } = clientWith({ data: "item-2" });
+    await saveOpsManualItem(client, { ...item, team: "data_analytics" });
+    expect(rpc.mock.calls[0][1].p_item).toMatchObject({ team: "data_analytics" });
+  });
+
+  it("omits area and owner when the input does not carry them", async () => {
+    const { rpc, client } = clientWith({ data: "item-3" });
+    const withoutArea: OpsManualItemInput = { ...item };
+    delete withoutArea.areaId;
+    delete withoutArea.ownerName;
+    await saveOpsManualItem(client, withoutArea);
+    const payload = rpc.mock.calls[0][1].p_item;
+    expect(payload).toMatchObject({ team: "operations", kind: "issue" });
+    expect(payload).not.toHaveProperty("area_id");
+    expect(payload).not.toHaveProperty("owner_name");
   });
 
   it("explains permission and other failures", async () => {

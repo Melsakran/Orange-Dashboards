@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
-import type { OpsAreaGroup, OpsRequest, OpsStatus } from "./types";
+import type { OpsAreaGroup, OpsRequest, OpsStatus, OpsTeam } from "./types";
 
 export type OpsReplaceRow = {
   interaction_id: string;
@@ -42,12 +42,14 @@ export function toReplaceRows(requests: OpsRequest[]): OpsReplaceRow[] {
 
 export async function replaceOpsRequests(
   supabase: SupabaseClient<Database>,
+  team: OpsTeam,
   fileName: string,
   requests: OpsRequest[],
 ): Promise<string> {
   const { data, error } = await supabase.rpc("replace_ops_requests", {
     p_file_name: fileName,
     p_rows: toReplaceRows(requests),
+    p_team: team,
   });
   if (error) {
     throw new Error(
@@ -62,6 +64,8 @@ export async function replaceOpsRequests(
 
 export interface OpsManualItemInput {
   id?: string;
+  /** The team a new item belongs to; the database keeps an existing item's team on update. */
+  team: OpsTeam;
   kind: "merge" | "issue";
   /** Empty lets the database generate MAN-XXXXXXXX. */
   interactionId: string;
@@ -74,10 +78,9 @@ export interface OpsManualItemInput {
   requestorName: string;
   assignedTo: string;
   closureCode: string;
-  /** Issues only. */
-  areaId: string | null;
-  /** Issues only; empty means the area's owner. */
-  ownerName: string;
+  /** Legacy ownership fields: only the not-yet-rewritten form sends them; removed in Task 3. */
+  areaId?: string | null;
+  ownerName?: string;
 }
 
 export interface OpsAreaInput {
@@ -103,6 +106,7 @@ export async function saveOpsManualItem(supabase: OpsClient, input: OpsManualIte
   const { data, error } = await supabase.rpc("save_ops_manual_item", {
     p_item: {
       id: input.id ?? null,
+      team: input.team,
       kind: input.kind,
       interaction_id: input.interactionId,
       status: input.status,
@@ -113,8 +117,8 @@ export async function saveOpsManualItem(supabase: OpsClient, input: OpsManualIte
       requestor_name: input.requestorName,
       assigned_to: input.assignedTo,
       closure_code: input.closureCode,
-      area_id: input.areaId,
-      owner_name: input.ownerName,
+      ...(input.areaId !== undefined ? { area_id: input.areaId } : {}),
+      ...(input.ownerName !== undefined ? { owner_name: input.ownerName } : {}),
     },
   });
   if (error) throw saveFailure(error.message);

@@ -509,11 +509,13 @@ export type Database = {
           uploaded_at: string;
           uploaded_by: string | null;
           uploaded_by_email: string | null;
+          team: string;
         };
         Insert: {
           file_name: string;
           id?: string;
           row_count: number;
+          team?: string;
           uploaded_at?: string;
           uploaded_by?: string | null;
           uploaded_by_email?: string | null;
@@ -525,6 +527,7 @@ export type Database = {
           uploaded_at?: string;
           uploaded_by?: string | null;
           uploaded_by_email?: string | null;
+          team?: string;
         };
         Relationships: [];
       };
@@ -550,6 +553,7 @@ export type Database = {
           source: string;
           area_id: string | null;
           owner_name: string;
+          team: string;
         };
         Insert: {
           assigned_to?: string;
@@ -572,6 +576,7 @@ export type Database = {
           source?: string;
           area_id?: string | null;
           owner_name?: string;
+          team?: string;
         };
         Update: {
           assigned_to?: string;
@@ -594,6 +599,7 @@ export type Database = {
           source?: string;
           area_id?: string | null;
           owner_name?: string;
+          team?: string;
         };
         Relationships: [];
       };
@@ -947,7 +953,10 @@ export type Database = {
         Returns: unknown;
       };
       is_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
-      replace_ops_requests: { Args: { p_file_name: string; p_rows: Json }; Returns: string };
+      replace_ops_requests: {
+        Args: { p_file_name: string; p_rows: Json; p_team: string };
+        Returns: string;
+      };
       save_ops_manual_item: { Args: { p_item: Json }; Returns: string };
       delete_ops_manual_item: { Args: { p_id: string }; Returns: undefined };
       route_ops_request: {

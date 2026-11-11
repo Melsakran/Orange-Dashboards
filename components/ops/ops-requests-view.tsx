@@ -21,7 +21,7 @@ const TAB_OPTIONS: ReadonlyArray<{ value: OpsRequestsTab; label: string }> = [
 ];
 
 function uploadSummary(dataset: OpsDataset) {
-  const { upload } = dataset;
+  const upload = dataset.uploads.operations;
   if (!upload) return "No data uploaded yet";
   const by = upload.uploadedByEmail ? ` by ${upload.uploadedByEmail}` : "";
   return `Last updated ${formatUploadedAt(upload.uploadedAt)}${by} · ${upload.rowCount} imported`;

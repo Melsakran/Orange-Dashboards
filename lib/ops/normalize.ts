@@ -109,6 +109,8 @@ export function normalizeRequests(sheet: RawSheet): NormalizeResult {
     const requestType = readRequestType(value("Svc Options"));
     requests.push({
       id: "",
+      // The caller overrides the team with the one chosen for the upload.
+      team: "operations",
       source: "import",
       areaId: null,
       ownerName: "",
