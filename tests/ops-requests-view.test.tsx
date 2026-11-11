@@ -89,7 +89,7 @@ describe("OpsRequestsView", () => {
     expect(window.location.search).toBe("?view=requests&tab=issues");
     expect(screen.queryByRole("region", { name: "Ops request overview" })).not.toBeInTheDocument();
     const issues = screen.getByRole("region", { name: "Issues" });
-    expect(issues).toHaveTextContent("4 issues");
+    expect(issues).toHaveTextContent("4 of 4 shown");
 
     await user.click(screen.getByRole("button", { name: "Merge Requests" }));
     expect(window.location.search).toBe("?view=requests");

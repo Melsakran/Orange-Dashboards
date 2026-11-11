@@ -72,7 +72,7 @@ export function OpsRequestsView({
           <span>{loadError}</span>
         </div>
       ) : tab === "issues" ? (
-        <IssuesPanel requests={requests} />
+        <IssuesPanel requests={requests} areas={dataset.areas} settings={dataset.settings} />
       ) : (
         <MergeRequestsPanel requests={requests} isAdmin={isAdmin} />
       )}
