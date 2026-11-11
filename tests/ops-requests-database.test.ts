@@ -55,6 +55,41 @@ async function expectError(db: PGlite, run: () => Promise<unknown>, message: Reg
   expect(String(error)).toMatch(message);
 }
 
+async function rpc<T = unknown>(db: PGlite, fn: string, ...args: unknown[]) {
+  const placeholders = args.map((_, index) => `$${index + 1}`).join(", ");
+  const result = await db.query<{ value: T }>(
+    `select public.${fn}(${placeholders}) as value`,
+    args.map((arg) => (arg !== null && typeof arg === "object" ? JSON.stringify(arg) : arg)),
+  );
+  return result.rows[0]?.value as T;
+}
+
+function manualItem(overrides: Record<string, unknown> = {}) {
+  return {
+    kind: "issue",
+    status: "open",
+    assignment_time: "2026-05-20T10:00:00",
+    request_title: "Dashboard is slow",
+    description: "Loads in 30s",
+    requestor_name: "NFawzy",
+    assigned_to: "HElGhandour",
+    ...overrides,
+  };
+}
+
+async function areaId(db: PGlite, name: string) {
+  const result = await db.query<{ id: string }>("select id from public.ops_areas where name = $1", [name]);
+  return result.rows[0]?.id as string;
+}
+
+async function requestByInteraction(db: PGlite, interactionId: string) {
+  const result = await db.query<Record<string, unknown>>(
+    "select * from public.ops_requests where interaction_id = $1",
+    [interactionId],
+  );
+  return result.rows[0];
+}
+
 async function interactionIds(db: PGlite) {
   const result = await db.query<{ interaction_id: string }>(
     "select interaction_id from public.ops_requests order by interaction_id",
@@ -88,6 +123,7 @@ describe("ops requests database", () => {
     await db.exec(read("supabase/migrations/0033_ops_requests.sql"));
     await db.exec(read("supabase/migrations/0037_ops_in_progress_status.sql"));
     await db.exec(read("supabase/migrations/0040_ops_merge_requests.sql"));
+    await db.exec(read("supabase/migrations/0041_ops_issues.sql"));
     await db.exec(`
       insert into auth.users (id) values ('${ADMIN_ID}'), ('${USER_ID}');
       insert into public.admin_users (auth_user_id, email, display_name)
@@ -194,5 +230,221 @@ describe("ops requests database", () => {
     await expectError(db, () => replace(db, "empty.csv", []), /must not be empty/i);
 
     expect(await interactionIds(db)).toEqual(["SD1", "SD2"]);
+  });
+
+  it("seeds the ownership directory and the default escalation days", async () => {
+    const areas = await db.query<{ area_group: string; name: string; owner_name: string; reports_to: string }>(
+      `select area_group, name, owner_name, reports_to from public.ops_areas
+       order by case area_group when 'reporting' then 0 when 'operations' then 1 else 2 end, sort_order`,
+    );
+    expect(areas.rows).toEqual([
+      { area_group: "reporting", name: "CVM & B2C", owner_name: "Mohamed Adel", reports_to: "Dina Sallam" },
+      { area_group: "reporting", name: "Orange Cash & Sales", owner_name: "Asmaa", reports_to: "Dina Sallam" },
+      { area_group: "reporting", name: "Digital", owner_name: "Farida", reports_to: "Dina Sallam" },
+      { area_group: "reporting", name: "B2B", owner_name: "Eman Kandil", reports_to: "Dina Sallam" },
+      { area_group: "reporting", name: "NTRA", owner_name: "Eman Abdelnasser", reports_to: "Dina Sallam" },
+      { area_group: "reporting", name: "Finance", owner_name: "Amira Hanafy", reports_to: "Dina Sallam" },
+      {
+        area_group: "reporting",
+        name: "Customer Experience & Customer Service",
+        owner_name: "Sara Hossam",
+        reports_to: "Dina Sallam",
+      },
+      { area_group: "operations", name: "Data Lake Operations", owner_name: "On-call member", reports_to: "Mohamed Habib" },
+      { area_group: "demand", name: "Data Lake", owner_name: "Sherif", reports_to: "Dina Sallam" },
+      { area_group: "demand", name: "Promo Engine", owner_name: "Yasmine", reports_to: "Mohamed Habib" },
+      { area_group: "demand", name: "New Platforms & APIs", owner_name: "Abdallah", reports_to: "Mohamed Habib" },
+    ]);
+
+    await setIdentity(db, "anon");
+    const settings = await db.query<{ escalation_days: number }>("select escalation_days from public.ops_settings");
+    expect(settings.rows).toEqual([{ escalation_days: 5 }]);
+  });
+
+  it("defaults imported rows to the operations area and marks them as imports", async () => {
+    await setIdentity(db, "authenticated", ADMIN_ID);
+    await replace(db, "wk46.csv", [
+      row("SD1"),
+      row("SD2", { request_type: "Merge Request", is_merge_request: true }),
+    ]);
+    const operations = await areaId(db, "Data Lake Operations");
+    const stored = await db.query<{ interaction_id: string; source: string; area_id: string | null; owner_name: string }>(
+      "select interaction_id, source, area_id, owner_name from public.ops_requests order by interaction_id",
+    );
+    expect(stored.rows).toEqual([
+      { interaction_id: "SD1", source: "import", area_id: operations, owner_name: "" },
+      { interaction_id: "SD2", source: "import", area_id: null, owner_name: "" },
+    ]);
+  });
+
+  it("keeps manual items across uploads and lets an imported row replace a manual duplicate", async () => {
+    await setIdentity(db, "authenticated", ADMIN_ID);
+    await replace(db, "first.csv", [row("SD1")]);
+    await rpc(db, "save_ops_manual_item", manualItem({ interaction_id: "MAN-KEEP" }));
+    await rpc(db, "save_ops_manual_item", manualItem({ interaction_id: "SD2", request_title: "Manual SD2" }));
+
+    await replace(db, "second.csv", [row("SD2", { request_title: "Imported SD2" }), row("SD3")]);
+
+    expect(await interactionIds(db)).toEqual(["MAN-KEEP", "SD2", "SD3"]);
+    const sd2 = await requestByInteraction(db, "SD2");
+    expect(sd2).toMatchObject({ source: "import", request_title: "Imported SD2" });
+    expect(sd2?.upload_id).not.toBeNull();
+    expect(await requestByInteraction(db, "MAN-KEEP")).toMatchObject({ source: "manual", upload_id: null });
+  });
+
+  it("keeps the routing of imported issues across uploads", async () => {
+    await setIdentity(db, "authenticated", ADMIN_ID);
+    await replace(db, "first.csv", [row("SD1"), row("SD2")]);
+    const b2b = await areaId(db, "B2B");
+    const sd1 = await requestByInteraction(db, "SD1");
+    await rpc(db, "route_ops_request", sd1?.id, b2b, "Someone");
+
+    await replace(db, "second.csv", [row("SD1"), row("SD2")]);
+
+    expect(await requestByInteraction(db, "SD1")).toMatchObject({ area_id: b2b, owner_name: "Someone" });
+    expect(await requestByInteraction(db, "SD2")).toMatchObject({
+      area_id: await areaId(db, "Data Lake Operations"),
+      owner_name: "",
+    });
+  });
+
+  it("saves manual items with generated ids, lowercase keys and normalized merge fields", async () => {
+    await setIdentity(db, "authenticated", ADMIN_ID);
+    const b2b = await areaId(db, "B2B");
+    const id = await rpc<string>(db, "save_ops_manual_item", manualItem({ area_id: b2b, owner_name: " Eman " }));
+    const stored = await db.query<Record<string, unknown>>("select * from public.ops_requests where id = $1", [id]);
+    expect(stored.rows[0]).toMatchObject({
+      source: "manual",
+      upload_id: null,
+      status: "open",
+      request_title: "Dashboard is slow",
+      requestor_name: "NFawzy",
+      requestor_key: "nfawzy",
+      assigned_to: "HElGhandour",
+      assigned_to_key: "helghandour",
+      is_merge_request: false,
+      area_id: b2b,
+      owner_name: "Eman",
+    });
+    expect(String(stored.rows[0]?.interaction_id)).toMatch(/^MAN-[0-9A-F]{8}$/);
+
+    const again = await rpc<string>(
+      db,
+      "save_ops_manual_item",
+      manualItem({ id, status: "CLOSED", close_date: "2026-05-21T10:00:00", request_title: "Updated", area_id: b2b }),
+    );
+    expect(again).toBe(id);
+    const updated = await db.query<Record<string, unknown>>("select * from public.ops_requests");
+    expect(updated.rows).toHaveLength(1);
+    expect(updated.rows[0]).toMatchObject({ id, status: "closed", request_title: "Updated" });
+
+    const mergeId = await rpc<string>(
+      db,
+      "save_ops_manual_item",
+      manualItem({ kind: "merge", area_id: b2b, owner_name: "Ignored" }),
+    );
+    const merge = await db.query<Record<string, unknown>>("select * from public.ops_requests where id = $1", [mergeId]);
+    expect(merge.rows[0]).toMatchObject({
+      is_merge_request: true,
+      request_type: "Merge Request",
+      area_id: null,
+      owner_name: "",
+    });
+  });
+
+  it("validates manual items", async () => {
+    await setIdentity(db, "authenticated", ADMIN_ID);
+    await rpc(db, "save_ops_manual_item", manualItem({ interaction_id: "MAN-1" }));
+    await expectError(
+      db,
+      () => rpc(db, "save_ops_manual_item", manualItem({ interaction_id: " MAN-1 " })),
+      /already exists/,
+    );
+    await expectError(db, () => rpc(db, "save_ops_manual_item", manualItem({ kind: "task" })), /kind/);
+    await expectError(db, () => rpc(db, "save_ops_manual_item", manualItem({ status: "resolved" })), /status/);
+    await expectError(db, () => rpc(db, "save_ops_manual_item", manualItem({ request_title: "   " })), /title/);
+
+    await replace(db, "first.csv", [row("SD1")]);
+    const imported = await requestByInteraction(db, "SD1");
+    await expectError(
+      db,
+      () => rpc(db, "save_ops_manual_item", manualItem({ id: imported?.id, request_title: "Hijack" })),
+      /not found/,
+    );
+    expect(await requestByInteraction(db, "SD1")).toMatchObject({ request_title: "Request SD1" });
+  });
+
+  it("deletes manual items only and routes only issues", async () => {
+    await setIdentity(db, "authenticated", ADMIN_ID);
+    await replace(db, "first.csv", [
+      row("SD1"),
+      row("SD2", { request_type: "Merge Request", is_merge_request: true }),
+    ]);
+    const manualId = await rpc<string>(db, "save_ops_manual_item", manualItem({ interaction_id: "MAN-1" }));
+    const imported = await requestByInteraction(db, "SD1");
+    const merge = await requestByInteraction(db, "SD2");
+
+    await expectError(db, () => rpc(db, "delete_ops_manual_item", imported?.id), /not found/);
+    const b2b = await areaId(db, "B2B");
+    await expectError(db, () => rpc(db, "route_ops_request", merge?.id, b2b, "x"), /not found/);
+
+    await rpc(db, "delete_ops_manual_item", manualId);
+    expect(await interactionIds(db)).toEqual(["SD1", "SD2"]);
+  });
+
+  it("manages ownership areas", async () => {
+    await setIdentity(db, "authenticated", ADMIN_ID);
+    const id = await rpc<string>(db, "save_ops_area", {
+      area_group: "demand",
+      name: "  Billing  ",
+      owner_name: "Nour",
+      reports_to: "Dina Sallam",
+      sort_order: 9,
+    });
+    expect(
+      (await db.query("select area_group, name, owner_name, reports_to, sort_order from public.ops_areas where id = $1", [id]))
+        .rows[0],
+    ).toEqual({ area_group: "demand", name: "Billing", owner_name: "Nour", reports_to: "Dina Sallam", sort_order: 9 });
+
+    await rpc(db, "save_ops_area", { id, area_group: "reporting", name: "Billing 2", owner_name: "Omar" });
+    expect(
+      (await db.query("select area_group, name, owner_name, reports_to from public.ops_areas where id = $1", [id])).rows[0],
+    ).toEqual({ area_group: "reporting", name: "Billing 2", owner_name: "Omar", reports_to: "" });
+
+    await expectError(db, () => rpc(db, "save_ops_area", { area_group: "demand", name: "  b2b " }), /already exists/);
+    await expectError(db, () => rpc(db, "save_ops_area", { area_group: "other", name: "X" }), /group/);
+    await expectError(db, () => rpc(db, "save_ops_area", { area_group: "demand", name: "  " }), /name/);
+
+    await rpc(db, "save_ops_manual_item", manualItem({ interaction_id: "MAN-1", area_id: id }));
+    await rpc(db, "delete_ops_area", id);
+    expect(await requestByInteraction(db, "MAN-1")).toMatchObject({ area_id: null });
+    expect((await db.query("select 1 from public.ops_areas where id = $1", [id])).rows).toHaveLength(0);
+  });
+
+  it("stores escalation days within 1 to 365", async () => {
+    await setIdentity(db, "authenticated", ADMIN_ID);
+    await rpc(db, "save_ops_settings", 7);
+    expect((await db.query("select escalation_days from public.ops_settings")).rows).toEqual([{ escalation_days: 7 }]);
+    await expectError(db, () => rpc(db, "save_ops_settings", 0), /between 1 and 365/);
+    await expectError(db, () => rpc(db, "save_ops_settings", 366), /between 1 and 365/);
+  });
+
+  it("restricts every new function to admins", async () => {
+    const calls: Array<[string, () => Promise<unknown>]> = [
+      ["save_ops_manual_item", () => rpc(db, "save_ops_manual_item", manualItem())],
+      ["delete_ops_manual_item", () => rpc(db, "delete_ops_manual_item", ADMIN_ID)],
+      ["route_ops_request", () => rpc(db, "route_ops_request", ADMIN_ID, null, "x")],
+      ["save_ops_area", () => rpc(db, "save_ops_area", { area_group: "demand", name: "X" })],
+      ["delete_ops_area", () => rpc(db, "delete_ops_area", ADMIN_ID)],
+      ["save_ops_settings", () => rpc(db, "save_ops_settings", 7)],
+    ];
+    for (const [, run] of calls) {
+      await setIdentity(db, "authenticated", USER_ID);
+      await expectError(db, run, /admin access required/i);
+      await db.exec("reset role");
+      await setIdentity(db, "anon");
+      await expectError(db, run, /permission denied/i);
+      await db.exec("reset role");
+    }
   });
 });
