@@ -3157,6 +3157,63 @@ footer {
   width: min(100%, 680px);
 }
 
+.ops-small-modal {
+  width: min(100%, 420px);
+}
+
+.ops-areas-modal {
+  width: min(100%, 860px);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
+
+.ops-areas-group h3 {
+  margin: 20px 0 8px;
+  font-size: 14px;
+}
+
+.ops-areas-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ops-area-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+}
+
+.ops-area-row .mutation-notice {
+  grid-column: 1 / -1;
+}
+
+.ops-area-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ops-area-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.ops-area-add-row {
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+@media (max-width: 720px) {
+  .ops-area-row,
+  .ops-area-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
 .form-hint {
   margin: 0;
   color: var(--muted);

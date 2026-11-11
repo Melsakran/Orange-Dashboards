@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { formatUploadedAt } from "@/lib/ops/analytics";
 import type { OpsDataset } from "@/lib/ops/types";
 import { SegmentedToggle } from "@/components/ui/segmented-toggle";
+import { EscalationSettings } from "./escalation-settings";
 import { IssuesPanel } from "./issues-panel";
+import { ManageAreasDialog } from "./manage-areas-dialog";
 import { ManualItemForm, type ManualItemKind } from "./manual-item-form";
 import { MergeRequestsPanel } from "./merge-requests-panel";
 import { OpsUpload } from "./ops-upload";
@@ -47,6 +49,8 @@ export function OpsRequestsView({
     () => (isAdmin ? { areas: dataset.areas, onChanged: refresh } : undefined),
     [isAdmin, dataset.areas, refresh],
   );
+  const [managingAreas, setManagingAreas] = useState(false);
+  const closeManageAreas = useCallback(() => setManagingAreas(false), []);
   const closeAdd = useCallback(() => setAdding(null), []);
   const added = useCallback(() => {
     setAdding(null);
@@ -76,6 +80,14 @@ export function OpsRequestsView({
       <div className="kpi-row-header ops-tab-row">
         <SegmentedToggle label="Request category" options={TAB_OPTIONS} value={tab} onChange={changeTab} />
         <div className="ops-tab-actions">
+          {isAdmin && !loadError && tab === "issues" ? (
+            <>
+              <button type="button" className="secondary-button" onClick={() => setManagingAreas(true)}>
+                Manage areas
+              </button>
+              <EscalationSettings escalationDays={dataset.settings.escalationDays} onSaved={refresh} />
+            </>
+          ) : null}
           {isAdmin && !loadError ? (
             <button
               type="button"
@@ -97,6 +109,9 @@ export function OpsRequestsView({
       ) : (
         <MergeRequestsPanel requests={requests} isAdmin={isAdmin} admin={admin} />
       )}
+      {managingAreas ? (
+        <ManageAreasDialog areas={dataset.areas} onClose={closeManageAreas} onChanged={refresh} />
+      ) : null}
       {adding ? (
         <ManualItemForm kind={adding} areas={dataset.areas} onClose={closeAdd} onSaved={added} />
       ) : null}
