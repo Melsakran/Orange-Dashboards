@@ -468,6 +468,39 @@ export type Database = {
           },
         ];
       };
+      ops_areas: {
+        Row: {
+          area_group: string;
+          id: string;
+          name: string;
+          owner_name: string;
+          reports_to: string;
+          sort_order: number;
+        };
+        Insert: {
+          area_group: string;
+          id?: string;
+          name: string;
+          owner_name?: string;
+          reports_to?: string;
+          sort_order?: number;
+        };
+        Update: {
+          area_group?: string;
+          id?: string;
+          name?: string;
+          owner_name?: string;
+          reports_to?: string;
+          sort_order?: number;
+        };
+        Relationships: [];
+      };
+      ops_settings: {
+        Row: { escalation_days: number; id: boolean };
+        Insert: { escalation_days?: number; id?: boolean };
+        Update: { escalation_days?: number; id?: boolean };
+        Relationships: [];
+      };
       ops_request_uploads: {
         Row: {
           file_name: string;
@@ -513,7 +546,10 @@ export type Database = {
           requestor_name: string;
           status: string;
           title: string;
-          upload_id: string;
+          upload_id: string | null;
+          source: string;
+          area_id: string | null;
+          owner_name: string;
         };
         Insert: {
           assigned_to?: string;
@@ -532,7 +568,10 @@ export type Database = {
           requestor_name?: string;
           status: string;
           title?: string;
-          upload_id: string;
+          upload_id?: string | null;
+          source?: string;
+          area_id?: string | null;
+          owner_name?: string;
         };
         Update: {
           assigned_to?: string;
@@ -551,7 +590,10 @@ export type Database = {
           requestor_name?: string;
           status?: string;
           title?: string;
-          upload_id?: string;
+          upload_id?: string | null;
+          source?: string;
+          area_id?: string | null;
+          owner_name?: string;
         };
         Relationships: [];
       };
@@ -906,6 +948,15 @@ export type Database = {
       };
       is_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
       replace_ops_requests: { Args: { p_file_name: string; p_rows: Json }; Returns: string };
+      save_ops_manual_item: { Args: { p_item: Json }; Returns: string };
+      delete_ops_manual_item: { Args: { p_id: string }; Returns: undefined };
+      route_ops_request: {
+        Args: { p_area_id: string | null; p_id: string; p_owner_name: string };
+        Returns: undefined;
+      };
+      save_ops_area: { Args: { p_area: Json }; Returns: string };
+      delete_ops_area: { Args: { p_id: string }; Returns: undefined };
+      save_ops_settings: { Args: { p_escalation_days: number }; Returns: undefined };
       delete_pe_daily_report: { Args: { p_report_date: string }; Returns: undefined };
       save_pe_daily_chart_settings: { Args: { p_visible_charts: string[] }; Returns: undefined };
       save_pe_daily_report: {

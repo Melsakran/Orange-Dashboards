@@ -61,6 +61,10 @@ describe("normalizeRequests", () => {
     if (!result.ok) return;
     expect(result.requests).toHaveLength(19);
     expect(result.requests[0]).toEqual({
+      id: "",
+      source: "import",
+      areaId: null,
+      ownerName: "",
       interactionId: "SD1265202",
       status: "closed",
       assignmentTime: "2026-05-17T13:50:00",

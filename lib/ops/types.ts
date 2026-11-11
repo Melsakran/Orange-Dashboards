@@ -13,8 +13,42 @@ export function isOpsStatus(value: string): value is OpsStatus {
   return (OPS_STATUSES as readonly string[]).includes(value);
 }
 
+export type OpsSource = "import" | "manual";
+
+export type OpsAreaGroup = "reporting" | "operations" | "demand";
+
+export const OPS_AREA_GROUPS: readonly OpsAreaGroup[] = ["reporting", "operations", "demand"];
+
+export const OPS_AREA_GROUP_LABELS: Record<OpsAreaGroup, string> = {
+  reporting: "Reporting & Dashboarding SPOCs",
+  operations: "Data Lake Operations",
+  demand: "Demand Projects",
+};
+
+export interface OpsArea {
+  id: string;
+  group: OpsAreaGroup;
+  name: string;
+  ownerName: string;
+  reportsTo: string;
+  sortOrder: number;
+}
+
+export interface OpsSettings {
+  escalationDays: number;
+}
+
+export const DEFAULT_OPS_SETTINGS: OpsSettings = { escalationDays: 5 };
+
 // Request timestamps are wall-clock values formatted as YYYY-MM-DDTHH:MM:SS with no timezone.
 export interface OpsRequest {
+  /** Database id; empty before the request is saved. */
+  id: string;
+  source: OpsSource;
+  /** Owning area for issues; null for merge requests and unrouted issues. */
+  areaId: string | null;
+  /** Per-item owner override; empty means use the area's owner. */
+  ownerName: string;
   interactionId: string;
   status: OpsStatus;
   assignmentTime: string;
@@ -54,4 +88,10 @@ export interface OpsUpload {
 export interface OpsDataset {
   requests: OpsRequest[];
   upload: OpsUpload | null;
+  areas: OpsArea[];
+  settings: OpsSettings;
+}
+
+export function emptyOpsDataset(): OpsDataset {
+  return { requests: [], upload: null, areas: [], settings: { ...DEFAULT_OPS_SETTINGS } };
 }

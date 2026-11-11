@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { OpsRequestsView } from "@/components/ops/ops-requests-view";
+import { emptyOpsDataset } from "@/lib/ops/types";
 
 const refresh = vi.hoisted(() => vi.fn());
 const replaceOpsRequests = vi.hoisted(() => vi.fn());
@@ -14,7 +15,7 @@ vi.mock("@/lib/ops/mutations", () => ({ replaceOpsRequests }));
 
 const sampleCsv = readFileSync(resolve(import.meta.dirname, "fixtures/ops-requests-sample.csv"));
 const mergeCsv = readFileSync(resolve(import.meta.dirname, "fixtures/ops-requests-merge-sample.csv"));
-const emptyDataset = { requests: [], upload: null };
+const emptyDataset = emptyOpsDataset();
 
 function chooseFile() {
   return screen.getByLabelText("Choose a CSV or Excel file to upload");

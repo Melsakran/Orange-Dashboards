@@ -108,6 +108,10 @@ export function normalizeRequests(sheet: RawSheet): NormalizeResult {
     const assignedTo = value("Assigned To");
     const requestType = readRequestType(value("Svc Options"));
     requests.push({
+      id: "",
+      source: "import",
+      areaId: null,
+      ownerName: "",
       interactionId,
       status,
       assignmentTime,

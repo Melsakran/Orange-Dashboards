@@ -10,7 +10,7 @@ import {
 } from "@/lib/data/initial-dashboard";
 import { hasDailyReportView, hasRequestsView } from "@/lib/dashboard/workspace-style";
 import { loadOpsDataset } from "@/lib/ops/load";
-import type { OpsDataset } from "@/lib/ops/types";
+import { emptyOpsDataset, type OpsDataset } from "@/lib/ops/types";
 import { emptyPageData, loadPeDailyPage } from "@/lib/pe-daily/load";
 import type { PeDailyPageData } from "@/lib/pe-daily/types";
 import { createClient } from "@/lib/supabase/server";
@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: WorkspacePageProps): Promise<
 
 async function loadRequests(isAdmin: boolean) {
   const client = hasSupabasePublicEnv() ? await createClient() : null;
-  let dataset: OpsDataset = { requests: [], upload: null };
+  let dataset: OpsDataset = emptyOpsDataset();
   let loadError: string | null = null;
   try {
     dataset = await loadOpsDataset(client);

@@ -1,7 +1,12 @@
 import type { OpsRequest } from "@/lib/ops/types";
 
 export function makeOpsRequest(overrides: Partial<OpsRequest> = {}): OpsRequest {
+  const interactionId = overrides.interactionId ?? "SD1000";
   return {
+    id: `${interactionId}-id`,
+    source: "import",
+    areaId: null,
+    ownerName: "",
     interactionId: "SD1000",
     status: "closed",
     assignmentTime: "2026-05-04T09:00:00",

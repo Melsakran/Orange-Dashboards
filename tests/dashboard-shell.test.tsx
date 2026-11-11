@@ -4,6 +4,7 @@ import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/view-states";
 import type { Workspace } from "@/data/workspaces";
 import { mapFixtureWorkspace } from "@/lib/data/initial-dashboard";
+import { emptyOpsDataset } from "@/lib/ops/types";
 import { sampleRequests } from "./fixtures/ops-requests";
 import { makePageData } from "./fixtures/pe-daily";
 
@@ -334,6 +335,7 @@ describe("DashboardShell", () => {
     });
     const requests = {
       dataset: {
+        ...emptyOpsDataset(),
         requests: sampleRequests,
         upload: {
           uploadedAt: "2026-10-22T07:45:00Z",

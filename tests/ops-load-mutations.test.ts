@@ -2,6 +2,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadOpsDataset, mapOpsRequestRow, OPS_PAGE_SIZE } from "@/lib/ops/load";
+import { emptyOpsDataset } from "@/lib/ops/types";
 import { replaceOpsRequests, toReplaceRows } from "@/lib/ops/mutations";
 import type { Database, Tables } from "@/types/database";
 import { makeOpsRequest } from "./fixtures/ops-requests";
@@ -25,6 +26,9 @@ function dbRow(id: string, overrides: Partial<Tables<"ops_requests">> = {}): Tab
     request_type: "Merge Request",
     is_merge_request: true,
     upload_id: "upload-1",
+    source: "import",
+    area_id: null,
+    owner_name: "",
     ...overrides,
   };
 }
@@ -34,8 +38,13 @@ function fakeClient(options: {
   upload?: Tables<"ops_request_uploads"> | null;
   requestsError?: { message: string };
   uploadError?: { message: string };
+  areas?: Tables<"ops_areas">[];
+  settings?: Tables<"ops_settings"> | null;
+  areasError?: { message: string };
+  settingsError?: { message: string };
 }) {
   const ranges: Array<[number, number]> = [];
+  const areaOrders: Array<Array<[string, boolean | undefined]>> = [];
   const client = {
     from(table: string) {
       if (table === "ops_requests") {
@@ -47,6 +56,35 @@ function fakeClient(options: {
             if (options.requestsError) return Promise.resolve({ data: null, error: options.requestsError });
             return Promise.resolve({ data: options.pages?.[ranges.length - 1] ?? [], error: null });
           },
+        };
+        return builder;
+      }
+      if (table === "ops_areas") {
+        const orders: Array<[string, boolean | undefined]> = [];
+        areaOrders.push(orders);
+        const builder = {
+          select: () => builder,
+          order: (column: string, opts?: { ascending?: boolean }) => {
+            orders.push([column, opts?.ascending]);
+            return builder;
+          },
+          then: (resolve: (value: unknown) => unknown) =>
+            resolve(
+              options.areasError
+                ? { data: null, error: options.areasError }
+                : { data: options.areas ?? [], error: null },
+            ),
+        };
+        return builder;
+      }
+      if (table === "ops_settings") {
+        const builder = {
+          select: () => builder,
+          maybeSingle: () => Promise.resolve(
+            options.settingsError
+              ? { data: null, error: options.settingsError }
+              : { data: options.settings ?? null, error: null },
+          ),
         };
         return builder;
       }
@@ -63,12 +101,18 @@ function fakeClient(options: {
       return builder;
     },
   };
-  return { client: client as unknown as SupabaseClient<Database>, ranges };
+  return { client: client as unknown as SupabaseClient<Database>, ranges, areaOrders };
 }
 
 describe("loadOpsDataset", () => {
   it("returns an empty dataset without a Supabase client", async () => {
-    expect(await loadOpsDataset(null)).toEqual({ requests: [], upload: null });
+    expect(await loadOpsDataset(null)).toEqual(emptyOpsDataset());
+    expect(emptyOpsDataset()).toEqual({
+      requests: [],
+      upload: null,
+      areas: [],
+      settings: { escalationDays: 5 },
+    });
   });
 
   it("pages through every request and maps the latest upload", async () => {
@@ -95,7 +139,48 @@ describe("loadOpsDataset", () => {
     });
   });
 
+  it("loads areas ordered by group, sort order and name, and the settings", async () => {
+    const area = (id: string, group: string, name: string, sort: number): Tables<"ops_areas"> => ({
+      id,
+      area_group: group,
+      name,
+      owner_name: `${name} owner`,
+      reports_to: "Boss",
+      sort_order: sort,
+    });
+    const { client, areaOrders } = fakeClient({
+      areas: [
+        area("a3", "demand", "Promo", 1),
+        area("a1", "reporting", "CVM", 0),
+        area("a2", "operations", "Ops", 0),
+        area("a0", "reporting", "B2B", 0),
+      ],
+      settings: { id: true, escalation_days: 9 },
+    });
+    const dataset = await loadOpsDataset(client);
+    expect(areaOrders[0]).toEqual([["sort_order", true], ["name", true]]);
+    expect(dataset.areas.map((entry) => entry.id)).toEqual(["a0", "a1", "a2", "a3"]);
+    expect(dataset.areas[0]).toEqual({
+      id: "a0",
+      group: "reporting",
+      name: "B2B",
+      ownerName: "B2B owner",
+      reportsTo: "Boss",
+      sortOrder: 0,
+    });
+    expect(dataset.settings).toEqual({ escalationDays: 9 });
+  });
+
+  it("falls back to default settings when none are stored", async () => {
+    const dataset = await loadOpsDataset(fakeClient({ settings: null }).client);
+    expect(dataset.settings).toEqual({ escalationDays: 5 });
+  });
+
   it("throws a readable error when loading fails", async () => {
+    await expect(loadOpsDataset(fakeClient({ areasError: { message: "areas down" } }).client))
+      .rejects.toThrow("Could not load Ops Requests: areas down");
+    await expect(loadOpsDataset(fakeClient({ settingsError: { message: "settings down" } }).client))
+      .rejects.toThrow("Could not load Ops Requests: settings down");
     await expect(loadOpsDataset(fakeClient({ requestsError: { message: "boom" } }).client))
       .rejects.toThrow("Could not load Ops Requests: boom");
     await expect(loadOpsDataset(fakeClient({ uploadError: { message: "nope" } }).client))
@@ -109,7 +194,14 @@ describe("mapOpsRequestRow", () => {
       assignment_time: "2026-05-17T13:50:00.000",
       close_date: null,
       status: "open",
+      source: "manual",
+      area_id: "area-1",
+      owner_name: "Mona",
     }))).toEqual({
+      id: "uuid-SD1",
+      source: "manual",
+      areaId: "area-1",
+      ownerName: "Mona",
       interactionId: "SD1",
       status: "open",
       assignmentTime: "2026-05-17T13:50:00",

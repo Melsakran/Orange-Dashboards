@@ -1,13 +1,14 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { OpsRequestsView } from "@/components/ops/ops-requests-view";
-import type { OpsDataset } from "@/lib/ops/types";
+import { emptyOpsDataset, type OpsDataset } from "@/lib/ops/types";
 import { sampleRequests } from "./fixtures/ops-requests";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/lib/supabase/client", () => ({ createClient: () => ({}) }));
 
 const dataset: OpsDataset = {
+  ...emptyOpsDataset(),
   requests: sampleRequests,
   upload: {
     uploadedAt: "2026-10-22T07:45:00Z",
@@ -115,7 +116,7 @@ describe("OpsRequestsView", () => {
   it("shows the empty state and load errors", () => {
     const { rerender } = render(
       <OpsRequestsView
-        dataset={{ requests: [], upload: null }}
+        dataset={emptyOpsDataset()}
         isAdmin={false}
         loadError="Could not load Ops Requests: boom"
       />,
@@ -125,7 +126,7 @@ describe("OpsRequestsView", () => {
     expect(screen.queryByText("No data uploaded yet")).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Ops request overview" })).not.toBeInTheDocument();
 
-    rerender(<OpsRequestsView dataset={{ requests: [], upload: null }} isAdmin={false} />);
+    rerender(<OpsRequestsView dataset={emptyOpsDataset()} isAdmin={false} />);
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getAllByText("No data uploaded yet").length).toBeGreaterThan(0);
     expect(screen.queryByText("Couldn't load the latest data")).not.toBeInTheDocument();
