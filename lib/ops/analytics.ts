@@ -79,11 +79,11 @@ export function resolutionMs(request: OpsRequest): number | null {
   return timestampMs(request.closeDate) - timestampMs(request.assignmentTime);
 }
 
-function average(values: number[]): number | null {
+export function average(values: number[]): number | null {
   return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
 }
 
-function median(values: number[]): number | null {
+export function median(values: number[]): number | null {
   if (!values.length) return null;
   const sorted = [...values].sort((a, b) => a - b);
   const middle = Math.floor(sorted.length / 2);
