@@ -14,8 +14,19 @@ import {
   OPS_STATUS_LABELS,
   type OpsRequest,
 } from "@/lib/ops/types";
+import { useRequestAdmin, type OpsAdminContext } from "./request-admin-actions";
 
-function OpsRequestDetails({ request, onClose }: { request: OpsRequest; onClose: () => void }) {
+function OpsRequestDetails({
+  request,
+  admin,
+  onClose,
+}: {
+  request: OpsRequest;
+  admin?: OpsAdminContext;
+  onClose: () => void;
+}) {
+  const adminActions = useRequestAdmin({ request, admin, onClose });
+  if (adminActions.dialog) return adminActions.dialog;
   const fields: Array<[string, string]> = [
     ["Status", OPS_STATUS_LABELS[request.status]],
     ["Request type", request.requestType],
@@ -48,6 +59,7 @@ function OpsRequestDetails({ request, onClose }: { request: OpsRequest; onClose:
       <p className="ops-detail-text">{request.description || "—"}</p>
       <h3>Closure comments</h3>
       <p className="ops-detail-text">{request.closureComments || "—"}</p>
+      {adminActions.actions}
     </ModalDialog>
   );
 }
@@ -56,10 +68,13 @@ export function OpsTicketList({
   requests,
   statusFilter,
   onStatusFilterChange,
+  admin,
 }: {
   requests: OpsRequest[];
   statusFilter: OpsStatusFilter;
   onStatusFilterChange: (filter: OpsStatusFilter) => void;
+  /** Admin-only edit and delete for manual items; omitted for visitors. */
+  admin?: OpsAdminContext;
 }) {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -152,7 +167,7 @@ export function OpsTicketList({
       ) : (
         <p className="ops-empty-filter">No requests match these filters.</p>
       )}
-      {selected ? <OpsRequestDetails request={selected} onClose={closeDetails} /> : null}
+      {selected ? <OpsRequestDetails request={selected} admin={admin} onClose={closeDetails} /> : null}
     </section>
   );
 }

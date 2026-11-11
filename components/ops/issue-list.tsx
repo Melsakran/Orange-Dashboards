@@ -5,6 +5,7 @@ import { ModalDialog } from "@/components/ui/modal-dialog";
 import { formatDuration, formatTimestamp, resolutionMs, type OpsStatusFilter } from "@/lib/ops/analytics";
 import type { IssueFilters, IssueView, OwnershipGroup } from "@/lib/ops/issues";
 import { OPS_STATUSES, OPS_STATUS_LABELS } from "@/lib/ops/types";
+import { useRequestAdmin, type OpsAdminContext } from "./request-admin-actions";
 
 const UNROUTED_LABEL = "Unrouted";
 
@@ -12,8 +13,18 @@ function escalationText(issue: IssueView) {
   return issue.reportsTo ? `Escalate to ${issue.reportsTo}` : "Needs escalation";
 }
 
-function IssueDetails({ issue, onClose }: { issue: IssueView; onClose: () => void }) {
+function IssueDetails({
+  issue,
+  admin,
+  onClose,
+}: {
+  issue: IssueView;
+  admin?: OpsAdminContext;
+  onClose: () => void;
+}) {
   const { request } = issue;
+  const adminActions = useRequestAdmin({ request, admin, onClose });
+  if (adminActions.dialog) return adminActions.dialog;
   const fields: Array<[string, string]> = [
     ["Status", OPS_STATUS_LABELS[request.status]],
     ["Area", issue.area?.name ?? UNROUTED_LABEL],
@@ -49,6 +60,7 @@ function IssueDetails({ issue, onClose }: { issue: IssueView; onClose: () => voi
       <p className="ops-detail-text">{request.description || "—"}</p>
       <h3>Closure comments</h3>
       <p className="ops-detail-text">{request.closureComments || "—"}</p>
+      {adminActions.actions}
     </ModalDialog>
   );
 }
@@ -61,6 +73,7 @@ export function IssueList({
   groups,
   lines,
   rowActions,
+  admin,
 }: {
   /** Every issue, before filtering. */
   issues: IssueView[];
@@ -74,6 +87,8 @@ export function IssueList({
   lines: string[];
   /** Optional extra cell per row (admin actions); adds an Actions column when set. */
   rowActions?: (issue: IssueView) => ReactNode;
+  /** Admin-only edit, delete and route in the details dialog; omitted for visitors. */
+  admin?: OpsAdminContext;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const closeDetails = useCallback(() => setSelectedId(null), []);
@@ -206,7 +221,7 @@ export function IssueList({
           {issues.length ? "No issues match these filters." : "No issues yet."}
         </p>
       )}
-      {selected ? <IssueDetails issue={selected} onClose={closeDetails} /> : null}
+      {selected ? <IssueDetails issue={selected} admin={admin} onClose={closeDetails} /> : null}
     </section>
   );
 }

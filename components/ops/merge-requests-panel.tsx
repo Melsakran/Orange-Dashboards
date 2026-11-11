@@ -13,15 +13,19 @@ import { OpsBreakdowns } from "./ops-breakdowns";
 import { OpsKpis } from "./ops-kpis";
 import { OpsTicketList } from "./ops-ticket-list";
 import { OpsTimeline } from "./ops-timeline";
+import type { OpsAdminContext } from "./request-admin-actions";
 import { useClientNow } from "./use-client-now";
 
 export function MergeRequestsPanel({
   requests,
   isAdmin,
+  admin,
 }: {
   /** Every Ops item; the panel keeps only merge requests. */
   requests: OpsRequest[];
   isAdmin: boolean;
+  /** Admin-only edit and delete for manual items; omitted for visitors. */
+  admin?: OpsAdminContext;
 }) {
   const nowMs = useClientNow();
   const [statusFilter, setStatusFilter] = useState<OpsStatusFilter>("all");
@@ -59,6 +63,7 @@ export function MergeRequestsPanel({
         requests={merges}
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
+        admin={admin}
       />
     </>
   );

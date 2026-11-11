@@ -22,6 +22,7 @@ import {
 } from "@/lib/ops/types";
 import { IssueList } from "./issue-list";
 import { IssuesBoard } from "./issues-board";
+import type { OpsAdminContext } from "./request-admin-actions";
 import { useClientNow } from "./use-client-now";
 
 const STATUS_COLORS: Record<OpsStatus, string> = {
@@ -48,6 +49,7 @@ export function IssuesPanel({
   areas = NO_AREAS,
   settings = DEFAULT_OPS_SETTINGS,
   rowActions,
+  admin,
 }: {
   /** Every Ops item; the panel keeps only issues. */
   requests: OpsRequest[];
@@ -55,6 +57,8 @@ export function IssuesPanel({
   settings?: OpsSettings;
   /** Optional extra cell per row (admin actions). */
   rowActions?: (issue: IssueView) => ReactNode;
+  /** Admin-only actions in the issue details dialog; omitted for visitors. */
+  admin?: OpsAdminContext;
 }) {
   const nowMs = useClientNow();
   const [filters, setFilters] = useState<IssueFilters>(INITIAL_FILTERS);
@@ -124,6 +128,7 @@ export function IssuesPanel({
         groups={groups}
         lines={lines}
         rowActions={rowActions}
+        admin={admin}
       />
     </>
   );

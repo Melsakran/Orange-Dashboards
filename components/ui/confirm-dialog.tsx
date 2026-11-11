@@ -10,6 +10,8 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
   busy?: boolean;
+  /** Shown in the dialog when the confirmed action failed. */
+  error?: string | null;
 }
 
 export function ConfirmDialog({
@@ -20,6 +22,7 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
   busy = false,
+  error = null,
 }: ConfirmDialogProps) {
   return (
     <ModalDialog
@@ -31,6 +34,11 @@ export function ConfirmDialog({
       <p className="eyebrow">Confirm</p>
       <h2 id="confirm-dialog-title">{title}</h2>
       <p className="confirm-dialog-message">{message}</p>
+      {error ? (
+        <div className="mutation-notice" role="alert">
+          <span>{error}</span>
+        </div>
+      ) : null}
       <div className="form-actions">
         <button
           type="button"

@@ -1,13 +1,15 @@
 "use client";
 
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { formatUploadedAt } from "@/lib/ops/analytics";
 import type { OpsDataset } from "@/lib/ops/types";
 import { SegmentedToggle } from "@/components/ui/segmented-toggle";
 import { IssuesPanel } from "./issues-panel";
+import { ManualItemForm, type ManualItemKind } from "./manual-item-form";
 import { MergeRequestsPanel } from "./merge-requests-panel";
 import { OpsUpload } from "./ops-upload";
+import type { OpsAdminContext } from "./request-admin-actions";
 
 export type OpsRequestsTab = "merge" | "issues";
 
@@ -40,6 +42,16 @@ export function OpsRequestsView({
   const [tab, setTab] = useState<OpsRequestsTab>(initialTab);
   const router = useRouter();
   const refresh = useCallback(() => router.refresh(), [router]);
+  const [adding, setAdding] = useState<ManualItemKind | null>(null);
+  const admin = useMemo<OpsAdminContext | undefined>(
+    () => (isAdmin ? { areas: dataset.areas, onChanged: refresh } : undefined),
+    [isAdmin, dataset.areas, refresh],
+  );
+  const closeAdd = useCallback(() => setAdding(null), []);
+  const added = useCallback(() => {
+    setAdding(null);
+    refresh();
+  }, [refresh]);
 
   function changeTab(next: OpsRequestsTab) {
     setTab(next);
@@ -63,8 +75,17 @@ export function OpsRequestsView({
 
       <div className="kpi-row-header ops-tab-row">
         <SegmentedToggle label="Request category" options={TAB_OPTIONS} value={tab} onChange={changeTab} />
-        {/* Slot for the active tab's admin actions. */}
-        <div className="ops-tab-actions" />
+        <div className="ops-tab-actions">
+          {isAdmin && !loadError ? (
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => setAdding(tab === "issues" ? "issue" : "merge")}
+            >
+              {tab === "issues" ? "Add issue" : "Add merge request"}
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {loadError ? (
@@ -72,10 +93,13 @@ export function OpsRequestsView({
           <span>{loadError}</span>
         </div>
       ) : tab === "issues" ? (
-        <IssuesPanel requests={requests} areas={dataset.areas} settings={dataset.settings} />
+        <IssuesPanel requests={requests} areas={dataset.areas} settings={dataset.settings} admin={admin} />
       ) : (
-        <MergeRequestsPanel requests={requests} isAdmin={isAdmin} />
+        <MergeRequestsPanel requests={requests} isAdmin={isAdmin} admin={admin} />
       )}
+      {adding ? (
+        <ManualItemForm kind={adding} areas={dataset.areas} onClose={closeAdd} onSaved={added} />
+      ) : null}
     </div>
   );
 }
