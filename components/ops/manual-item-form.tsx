@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useCallback, useRef, useState, type FormEvent } from "react";
 import { ModalDialog } from "@/components/ui/modal-dialog";
 import { saveOpsManualItem } from "@/lib/ops/mutations";
 import {
@@ -58,6 +58,11 @@ export function ManualItemForm({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
+  const isClosed = status === "closed";
+  // Closing is blocked while a save is in flight, like the delete confirmation.
+  const handleClose = useCallback(() => {
+    if (!savingRef.current) onClose();
+  }, [onClose]);
 
   const heading = `${item ? "Edit" : "Add"} ${isIssue ? "issue" : "merge request"}`;
 
@@ -65,7 +70,9 @@ export function ManualItemForm({
     const found: FieldErrors = {};
     if (!title.trim()) found.title = "Title is required.";
     if (!assignmentTime) found.assignmentTime = "Assignment time is required.";
-    if (assignmentTime && closeDate && closeDate < assignmentTime) {
+    if (isClosed && !closeDate) {
+      found.closeDate = "Close time is required for closed items.";
+    } else if (isClosed && assignmentTime && closeDate < assignmentTime) {
       found.closeDate = "Close time can't be earlier than the assignment time.";
     }
     if (isIssue && !areaOwner.areaId) found.area = "Choose an area.";
@@ -89,7 +96,7 @@ export function ManualItemForm({
         interactionId: interactionId.trim(),
         status,
         assignmentTime: toStoredValue(assignmentTime),
-        closeDate: closeDate ? toStoredValue(closeDate) : null,
+        closeDate: isClosed && closeDate ? toStoredValue(closeDate) : null,
         requestTitle: title.trim(),
         description: description.trim(),
         requestorName: requestor.trim(),
@@ -111,7 +118,7 @@ export function ManualItemForm({
     <ModalDialog
       labelledBy="ops-manual-form-title"
       closeLabel="Close form"
-      onClose={onClose}
+      onClose={handleClose}
       className="admin-modal ops-form-modal"
     >
       <h2 id="ops-manual-form-title">{heading}</h2>
@@ -202,6 +209,7 @@ export function ManualItemForm({
               id="ops-manual-closed"
               type="datetime-local"
               value={closeDate}
+              disabled={!isClosed}
               aria-invalid={Boolean(errors.closeDate)}
               aria-describedby={errors.closeDate ? "ops-manual-closed-error" : undefined}
               onChange={(event) => setCloseDate(event.target.value)}
@@ -225,7 +233,7 @@ export function ManualItemForm({
           </div>
         ) : null}
         <div className="form-actions">
-          <button type="button" className="secondary-button" onClick={onClose} disabled={saving}>
+          <button type="button" className="secondary-button" onClick={handleClose} disabled={saving}>
             Cancel
           </button>
           <button type="submit" className="primary-button" disabled={saving}>

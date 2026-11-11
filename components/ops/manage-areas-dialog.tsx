@@ -37,12 +37,16 @@ function DraftFields({
   onChange,
   disabled,
   nameError,
+  idPrefix,
 }: {
   draft: Draft;
   onChange: (changes: Partial<Draft>) => void;
   disabled: boolean;
   nameError?: string;
+  /** Makes the error element id unique per row. */
+  idPrefix: string;
 }) {
+  const errorId = `${idPrefix}-name-error`;
   return (
     <div className="ops-area-fields">
       <div className="form-field">
@@ -51,10 +55,11 @@ function DraftFields({
           placeholder="Name"
           value={draft.name}
           aria-invalid={Boolean(nameError)}
+          aria-describedby={nameError ? errorId : undefined}
           disabled={disabled}
           onChange={(event) => onChange({ name: event.target.value })}
         />
-        {nameError ? <p className="form-error">{nameError}</p> : null}
+        {nameError ? <p className="form-error" id={errorId} role="alert">{nameError}</p> : null}
       </div>
       <div className="form-field">
         <input
@@ -257,68 +262,74 @@ export function ManageAreasDialog({
                 const draft = drafts[area.id] ?? draftOf(area);
                 const busy = busyKey !== null;
                 return (
-                  <li key={area.id} role="group" aria-label={`Area ${area.name}`} className="ops-area-row">
-                    <DraftFields
-                      draft={draft}
-                      disabled={busy}
-                      nameError={nameErrors[area.id]}
-                      onChange={(changes) =>
-                        setDrafts((current) => ({ ...current, [area.id]: { ...(current[area.id] ?? draftOf(area)), ...changes } }))
-                      }
-                    />
-                    <div className="ops-area-actions">
-                      <button
-                        type="button"
-                        className="secondary-button"
+                  <li key={area.id}>
+                    <div role="group" aria-label={`Area ${area.name}`} className="ops-area-row">
+                      <DraftFields
+                        idPrefix={`ops-area-${area.id}`}
+                        draft={draft}
                         disabled={busy}
-                        onClick={() => void saveRow(area)}
-                      >
-                        Save
-                      </button>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        disabled={busy}
-                        onClick={() => {
-                          setDeleteError(null);
-                          setConfirming(area);
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                    {saveErrors[area.id] ? (
-                      <div className="mutation-notice" role="alert">
-                        <span>{saveErrors[area.id]}</span>
+                        nameError={nameErrors[area.id]}
+                        onChange={(changes) =>
+                          setDrafts((current) => ({ ...current, [area.id]: { ...(current[area.id] ?? draftOf(area)), ...changes } }))
+                        }
+                      />
+                      <div className="ops-area-actions">
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          disabled={busy}
+                          onClick={() => void saveRow(area)}
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          disabled={busy}
+                          onClick={() => {
+                            setDeleteError(null);
+                            setConfirming(area);
+                          }}
+                        >
+                          Delete
+                        </button>
                       </div>
-                    ) : null}
+                      {saveErrors[area.id] ? (
+                        <div className="mutation-notice" role="alert">
+                          <span>{saveErrors[area.id]}</span>
+                        </div>
+                      ) : null}
+                    </div>
                   </li>
                 );
               })}
-              <li role="group" aria-label={`Add area to ${label}`} className="ops-area-row ops-area-add-row">
-                <DraftFields
-                  draft={addDraft}
-                  disabled={busyKey !== null}
-                  nameError={nameErrors[addKey]}
-                  onChange={(changes) =>
-                    setAddDrafts((current) => ({ ...current, [group]: { ...(current[group] ?? EMPTY_DRAFT), ...changes } }))
-                  }
-                />
-                <div className="ops-area-actions">
-                  <button
-                    type="button"
-                    className="primary-button"
+              <li>
+                <div role="group" aria-label={`Add area to ${label}`} className="ops-area-row ops-area-add-row">
+                  <DraftFields
+                    idPrefix={`ops-area-add-${group}`}
+                    draft={addDraft}
                     disabled={busyKey !== null}
-                    onClick={() => void addArea(group)}
-                  >
-                    Add
-                  </button>
-                </div>
-                {saveErrors[addKey] ? (
-                  <div className="mutation-notice" role="alert">
-                    <span>{saveErrors[addKey]}</span>
+                    nameError={nameErrors[addKey]}
+                    onChange={(changes) =>
+                      setAddDrafts((current) => ({ ...current, [group]: { ...(current[group] ?? EMPTY_DRAFT), ...changes } }))
+                    }
+                  />
+                  <div className="ops-area-actions">
+                    <button
+                      type="button"
+                      className="primary-button"
+                      disabled={busyKey !== null}
+                      onClick={() => void addArea(group)}
+                    >
+                      Add
+                    </button>
                   </div>
-                ) : null}
+                  {saveErrors[addKey] ? (
+                    <div className="mutation-notice" role="alert">
+                      <span>{saveErrors[addKey]}</span>
+                    </div>
+                  ) : null}
+                </div>
               </li>
             </ul>
           </section>

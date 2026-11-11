@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useCallback, useRef, useState, type FormEvent } from "react";
 import { ModalDialog } from "@/components/ui/modal-dialog";
 import { routeOpsRequest } from "@/lib/ops/mutations";
 import type { OpsArea, OpsRequest } from "@/lib/ops/types";
@@ -23,6 +23,10 @@ export function RouteIssueDialog({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
+  // Closing is blocked while a save is in flight, like the delete confirmation.
+  const handleClose = useCallback(() => {
+    if (!savingRef.current) onClose();
+  }, [onClose]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -50,7 +54,7 @@ export function RouteIssueDialog({
     <ModalDialog
       labelledBy="ops-route-title"
       closeLabel="Close routing"
-      onClose={onClose}
+      onClose={handleClose}
       className="admin-modal ops-form-modal"
     >
       <p className="eyebrow">{request.interactionId}</p>
@@ -63,7 +67,7 @@ export function RouteIssueDialog({
           </div>
         ) : null}
         <div className="form-actions">
-          <button type="button" className="secondary-button" onClick={onClose} disabled={saving}>
+          <button type="button" className="secondary-button" onClick={handleClose} disabled={saving}>
             Cancel
           </button>
           <button type="submit" className="primary-button" disabled={saving}>

@@ -1,13 +1,11 @@
 "use client";
 
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useState } from "react";
 import { ModalDialog } from "@/components/ui/modal-dialog";
 import { formatDuration, formatTimestamp, resolutionMs, type OpsStatusFilter } from "@/lib/ops/analytics";
-import type { IssueFilters, IssueView, OwnershipGroup } from "@/lib/ops/issues";
+import { UNROUTED_LABEL, type IssueFilters, type IssueView, type OwnershipGroup } from "@/lib/ops/issues";
 import { OPS_STATUSES, OPS_STATUS_LABELS } from "@/lib/ops/types";
 import { useRequestAdmin, type OpsAdminContext } from "./request-admin-actions";
-
-const UNROUTED_LABEL = "Unrouted";
 
 function escalationText(issue: IssueView) {
   return issue.reportsTo ? `Escalate to ${issue.reportsTo}` : "Needs escalation";
@@ -72,7 +70,6 @@ export function IssueList({
   onFiltersChange,
   groups,
   lines,
-  rowActions,
   admin,
 }: {
   /** Every issue, before filtering. */
@@ -85,8 +82,6 @@ export function IssueList({
   groups: OwnershipGroup[];
   /** Escalation lines (the names areas report to). */
   lines: string[];
-  /** Optional extra cell per row (admin actions); adds an Actions column when set. */
-  rowActions?: (issue: IssueView) => ReactNode;
   /** Admin-only edit, delete and route in the details dialog; omitted for visitors. */
   admin?: OpsAdminContext;
 }) {
@@ -167,7 +162,6 @@ export function IssueList({
                 <th scope="col">Status</th>
                 <th scope="col">Raised</th>
                 <th scope="col" className="ops-number">Age / Resolution</th>
-                {rowActions ? <th scope="col">Actions</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -209,7 +203,6 @@ export function IssueList({
                           ? "—"
                           : `${formatDuration(issue.openAgeMs)} open`}
                     </td>
-                    {rowActions ? <td>{rowActions(issue)}</td> : null}
                   </tr>
                 );
               })}

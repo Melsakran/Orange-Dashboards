@@ -175,7 +175,7 @@ describe("Add merge request", () => {
     setValue("Description", "Please merge");
     setValue("Requestor", "Rana");
     setValue("Assignee", "Omar");
-    setValue("Status", "pending");
+    setValue("Status", "closed");
     setValue("Assignment date and time", "2026-05-21T09:30");
     setValue("Close date and time", "2026-05-22T10:00");
     setValue("Closure code", "Successful");
@@ -186,7 +186,7 @@ describe("Add merge request", () => {
       id: undefined,
       kind: "merge",
       interactionId: "",
-      status: "pending",
+      status: "closed",
       assignmentTime: "2026-05-21T09:30:00",
       closeDate: "2026-05-22T10:00:00",
       requestTitle: "Merge 2501",
@@ -239,12 +239,67 @@ describe("Add merge request", () => {
     const dialog = await screen.findByRole("dialog");
 
     setValue("Title", "Merge");
+    setValue("Status", "closed");
     setValue("Assignment date and time", "2026-05-21T09:30");
     setValue("Close date and time", "2026-05-21T09:00");
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
 
     expect(within(dialog).getByText("Close time can't be earlier than the assignment time.")).toBeInTheDocument();
     expect(saveOpsManualItem).not.toHaveBeenCalled();
+  });
+
+  it("requires a close time for closed items", async () => {
+    const user = userEvent.setup();
+    renderView();
+    await user.click(screen.getByRole("button", { name: "Add merge request" }));
+    const dialog = await screen.findByRole("dialog");
+
+    setValue("Title", "Merge");
+    setValue("Status", "closed");
+    setValue("Assignment date and time", "2026-05-21T09:30");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    expect(within(dialog).getByText("Close time is required for closed items.")).toBeInTheDocument();
+    expect(saveOpsManualItem).not.toHaveBeenCalled();
+  });
+
+  it("saves no close time unless the item is closed", async () => {
+    const user = userEvent.setup();
+    renderView();
+    await user.click(screen.getByRole("button", { name: "Add merge request" }));
+    const dialog = await screen.findByRole("dialog");
+
+    setValue("Title", "Merge");
+    setValue("Status", "closed");
+    setValue("Assignment date and time", "2026-05-21T09:30");
+    setValue("Close date and time", "2026-05-22T10:00");
+    setValue("Status", "pending");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    await vi.waitFor(() => expect(saveOpsManualItem).toHaveBeenCalledTimes(1));
+    expect(saveOpsManualItem.mock.calls[0][1]).toMatchObject({ status: "pending", closeDate: null });
+  });
+
+  it("cannot be closed with Escape or the close button while saving", async () => {
+    const user = userEvent.setup();
+    let finish: (id: string) => void = () => {};
+    saveOpsManualItem.mockReturnValueOnce(new Promise<string>((resolve) => { finish = resolve; }));
+    renderView();
+    await user.click(screen.getByRole("button", { name: "Add merge request" }));
+    const dialog = await screen.findByRole("dialog");
+
+    setValue("Title", "Merge");
+    setValue("Assignment date and time", "2026-05-21T09:30");
+    fireEvent.submit(dialog.querySelector("form")!);
+    expect(within(dialog).getByRole("button", { name: "Saving…" })).toBeDisabled();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    await user.click(within(dialog).getByRole("button", { name: "Close form" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    finish("new-id");
+    await vi.waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("keeps the dialog open and shows the error when saving fails, then allows a retry", async () => {
@@ -538,5 +593,62 @@ describe("Route imported issues", () => {
     expect(routeOpsRequest).toHaveBeenCalledTimes(1);
     finish();
     await vi.waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+  });
+});
+
+describe("Stale area references", () => {
+  const staleDataset: OpsDataset = {
+    ...dataset,
+    requests: [
+      makeOpsRequest({
+        id: "id-stale-manual",
+        interactionId: "ISS-STALE-MANUAL",
+        source: "manual",
+        requestTitle: "Stale manual issue",
+        areaId: "a-gone",
+        status: "open",
+        assignmentTime: "2026-05-18T10:15:00",
+        closeDate: null,
+        closureCode: "",
+      }),
+      makeOpsRequest({
+        id: "id-stale-import",
+        interactionId: "ISS-STALE-IMPORT",
+        requestTitle: "Stale imported issue",
+        areaId: "a-gone",
+        status: "open",
+        assignmentTime: "2026-05-18T10:15:00",
+        closeDate: null,
+        closureCode: "",
+      }),
+    ],
+  };
+
+  it("starts the edit form on 'Choose an area' and requires one when the item's area was deleted", async () => {
+    const user = userEvent.setup();
+    renderView(true, staleDataset);
+    await openIssuesTab(user);
+    const details = await openDetails(user, "ISS-STALE-MANUAL");
+    await user.click(within(details).getByRole("button", { name: "Edit" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Edit issue" });
+    expect(within(dialog).getByLabelText("Area")).toHaveValue("");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(within(dialog).getByText("Choose an area.")).toBeInTheDocument();
+    expect(saveOpsManualItem).not.toHaveBeenCalled();
+  });
+
+  it("requires an area in the routing dialog when the current area was deleted", async () => {
+    const user = userEvent.setup();
+    renderView(true, staleDataset);
+    await openIssuesTab(user);
+    const details = await openDetails(user, "ISS-STALE-IMPORT");
+    await user.click(within(details).getByRole("button", { name: "Route" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Route issue" });
+    expect(within(dialog).getByLabelText("Area")).toHaveValue("");
+    await user.click(within(dialog).getByRole("button", { name: "Save routing" }));
+    expect(within(dialog).getByText("Choose an area.")).toBeInTheDocument();
+    expect(routeOpsRequest).not.toHaveBeenCalled();
   });
 });

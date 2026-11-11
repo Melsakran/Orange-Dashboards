@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import type { OpsStatusFilter } from "@/lib/ops/analytics";
 import {
   buildOwnershipBoard,
@@ -9,7 +9,6 @@ import {
   filterIssues,
   summarizeIssues,
   type IssueFilters,
-  type IssueView,
 } from "@/lib/ops/issues";
 import {
   DEFAULT_OPS_SETTINGS,
@@ -48,20 +47,17 @@ export function IssuesPanel({
   requests,
   areas = NO_AREAS,
   settings = DEFAULT_OPS_SETTINGS,
-  rowActions,
   admin,
 }: {
   /** Every Ops item; the panel keeps only issues. */
   requests: OpsRequest[];
   areas?: OpsArea[];
   settings?: OpsSettings;
-  /** Optional extra cell per row (admin actions). */
-  rowActions?: (issue: IssueView) => ReactNode;
   /** Admin-only actions in the issue details dialog; omitted for visitors. */
   admin?: OpsAdminContext;
 }) {
   const nowMs = useClientNow();
-  const [filters, setFilters] = useState<IssueFilters>(INITIAL_FILTERS);
+  const [chosenFilters, setFilters] = useState<IssueFilters>(INITIAL_FILTERS);
 
   const issues = useMemo(
     () => describeIssues(requests, areas, settings, nowMs),
@@ -70,6 +66,19 @@ export function IssuesPanel({
   const summary = useMemo(() => summarizeIssues(issues), [issues]);
   const groups = useMemo(() => buildOwnershipBoard(issues, areas), [issues, areas]);
   const lines = useMemo(() => escalationLines(areas), [areas]);
+  // The chosen area or line can disappear after a refresh (last unrouted issue routed, area deleted
+  // or re-pointed); fall back to "all" so the list never dead-ends on a filter nothing can clear.
+  const filters = useMemo<IssueFilters>(() => {
+    const areaKnown = groups.some((group) => group.cards.some((card) => card.key === chosenFilters.areaKey));
+    return {
+      ...chosenFilters,
+      areaKey: chosenFilters.areaKey !== "all" && !areaKnown ? "all" : chosenFilters.areaKey,
+      escalationLine:
+        chosenFilters.escalationLine !== "all" && !lines.includes(chosenFilters.escalationLine)
+          ? "all"
+          : chosenFilters.escalationLine,
+    };
+  }, [chosenFilters, groups, lines]);
   const visible = useMemo(() => filterIssues(issues, filters), [issues, filters]);
 
   function change(changes: Partial<IssueFilters>) {
@@ -127,7 +136,6 @@ export function IssuesPanel({
         onFiltersChange={change}
         groups={groups}
         lines={lines}
-        rowActions={rowActions}
         admin={admin}
       />
     </>

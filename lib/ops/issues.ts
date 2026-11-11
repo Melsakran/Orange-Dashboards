@@ -17,7 +17,7 @@ import {
 } from "./types";
 
 const UNROUTED_KEY = "unrouted";
-const UNROUTED_LABEL = "Unrouted";
+export const UNROUTED_LABEL = "Unrouted";
 const UNASSIGNED_LABEL = "Unassigned";
 
 export interface IssueView {

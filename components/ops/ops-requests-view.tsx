@@ -24,7 +24,7 @@ function uploadSummary(dataset: OpsDataset) {
   const { upload } = dataset;
   if (!upload) return "No data uploaded yet";
   const by = upload.uploadedByEmail ? ` by ${upload.uploadedByEmail}` : "";
-  return `Last updated ${formatUploadedAt(upload.uploadedAt)}${by} · ${upload.rowCount} requests`;
+  return `Last updated ${formatUploadedAt(upload.uploadedAt)}${by} · ${upload.rowCount} imported`;
 }
 
 export function OpsRequestsView({
@@ -48,6 +48,10 @@ export function OpsRequestsView({
   const admin = useMemo<OpsAdminContext | undefined>(
     () => (isAdmin ? { areas: dataset.areas, onChanged: refresh } : undefined),
     [isAdmin, dataset.areas, refresh],
+  );
+  const manualInteractionIds = useMemo(
+    () => new Set(requests.filter((request) => request.source === "manual").map((request) => request.interactionId)),
+    [requests],
   );
   const [managingAreas, setManagingAreas] = useState(false);
   const closeManageAreas = useCallback(() => setManagingAreas(false), []);
@@ -73,7 +77,7 @@ export function OpsRequestsView({
           <p className="workspace-description">
             {loadError ? "Couldn't load the latest data" : uploadSummary(dataset)}
           </p>
-          {isAdmin ? <OpsUpload onUploaded={refresh} /> : null}
+          {isAdmin ? <OpsUpload onUploaded={refresh} manualInteractionIds={manualInteractionIds} /> : null}
         </div>
       </div>
 

@@ -26,7 +26,9 @@ export function useAreaOwner(
   initialAreaId: string | null,
   initialOwnerOverride: string,
 ): AreaOwnerState {
-  const [areaId, setAreaId] = useState(initialAreaId ?? "");
+  const [areaId, setAreaId] = useState(
+    initialAreaId && areas.some((candidate) => candidate.id === initialAreaId) ? initialAreaId : "",
+  );
   const [typedOwner, setTypedOwner] = useState<string | null>(
     initialOwnerOverride.trim() ? initialOwnerOverride : null,
   );

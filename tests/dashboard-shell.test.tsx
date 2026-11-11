@@ -367,7 +367,7 @@ describe("DashboardShell", () => {
       expect(viewButton("Requests")).toHaveAttribute("aria-pressed", "true");
       expect(window.location.search).toBe("?view=requests");
       expect(screen.getByRole("region", { name: "Ops request overview" })).toBeInTheDocument();
-      expect(screen.getByText(/Last updated .* by admin@example\.com · 5 requests/)).toBeInTheDocument();
+      expect(screen.getByText(/Last updated .* by admin@example\.com · 5 imported/)).toBeInTheDocument();
       expect(screen.queryByRole("region", { name: "Workspace status overview" })).not.toBeInTheDocument();
       expect(screen.queryByRole("heading", { level: 2, name: "Projects" })).not.toBeInTheDocument();
 
@@ -457,6 +457,17 @@ describe("DashboardShell", () => {
       await user.click(viewButton("Projects"));
       expect(window.location.search).toBe("");
       expect(screen.getByRole("region", { name: "Workspace status overview" })).toBeInTheDocument();
+    });
+
+    it("drops a stale tab param when switching to the Daily Report", async () => {
+      const user = userEvent.setup();
+      window.history.replaceState(null, "", "/pe-ops?view=requests&tab=issues");
+      render(<DashboardShell initialDashboard={peOpsDashboard} source="fixture" dailyReport={dailyReport} />);
+
+      await user.click(viewButton("Daily Report"));
+      const params = new URLSearchParams(window.location.search);
+      expect(params.get("view")).toBe("daily-report");
+      expect(params.has("tab")).toBe(false);
     });
 
     it("opens straight on the Daily Report from the link", () => {

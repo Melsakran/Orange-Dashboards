@@ -44,7 +44,7 @@ describe("OpsRequestsView", () => {
 
     expect(screen.getByText("View toggle")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
-    expect(screen.getByText(/Last updated .* by admin@example\.com · 5 requests/)).toBeInTheDocument();
+    expect(screen.getByText(/Last updated .* by admin@example\.com · 5 imported/)).toBeInTheDocument();
 
     const tabs = screen.getByRole("group", { name: "Request category" });
     expect(within(tabs).getByRole("button", { name: "Merge Requests" })).toHaveAttribute("aria-pressed", "true");

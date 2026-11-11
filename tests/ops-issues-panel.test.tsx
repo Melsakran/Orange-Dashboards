@@ -257,8 +257,41 @@ describe("IssuesPanel", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("renders extra row actions when provided", () => {
-    renderPanel({ rowActions: (issue) => <button type="button">Edit {issue.request.interactionId}</button> });
-    expect(screen.getByRole("button", { name: "Edit I1" })).toBeInTheDocument();
+  it("falls back to all issues when the filtered Unrouted card disappears", async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderPanel();
+
+    await user.click(screen.getByRole("button", { name: /^Unrouted/ }));
+    expect(visibleIds()).toEqual(["I4"]);
+
+    const routed = requests.map((request) =>
+      request.interactionId === "I4" ? { ...request, areaId: "a-ops" } : request,
+    );
+    rerender(<IssuesPanel requests={routed} areas={areas} settings={{ escalationDays: 5 }} />);
+
+    expect(visibleIds()).toHaveLength(5);
+    expect(screen.queryByRole("button", { name: /^Unrouted/ })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Area")).toHaveValue("all");
+    expect(within(screen.getByRole("region", { name: "Ownership" })).queryAllByRole("button", { pressed: true }))
+      .toHaveLength(0);
+  });
+
+  it("falls back to all issues when the filtered escalation line or area no longer exists", async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderPanel();
+
+    await user.selectOptions(screen.getByLabelText("Escalation line"), "Dina");
+    expect(visibleIds()).toEqual(["I2", "I1"]);
+    await user.click(screen.getByRole("button", { name: /^Campaigns/ }));
+    expect(screen.getByText("No issues match these filters.")).toBeInTheDocument();
+
+    const changed = areas
+      .filter((area) => area.id !== "a-dem")
+      .map((area) => (area.id === "a-ops" ? { ...area, reportsTo: "Erin" } : area));
+    rerender(<IssuesPanel requests={requests} areas={changed} settings={{ escalationDays: 5 }} />);
+
+    expect(screen.getByLabelText("Escalation line")).toHaveValue("all");
+    expect(screen.getByLabelText("Area")).toHaveValue("all");
+    expect(visibleIds()).toHaveLength(5);
   });
 });

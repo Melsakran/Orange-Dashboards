@@ -138,6 +138,28 @@ describe("Manage areas", () => {
     expect(saveOpsArea).not.toHaveBeenCalled();
   });
 
+  it("announces the name error and links it to the input", async () => {
+    const user = userEvent.setup();
+    const dialog = await openManage(user);
+    const row = rowOf(dialog, "Pipelines");
+
+    setIn(row, "Name", "   ");
+    await user.click(within(row).getByRole("button", { name: "Save" }));
+    const error = within(row).getByText("Name is required.");
+    expect(error).toHaveAttribute("role", "alert");
+    expect(error.id).toBeTruthy();
+    expect(within(row).getByLabelText("Name")).toHaveAttribute("aria-describedby", error.id);
+  });
+
+  it("groups each row with a div inside its list item", async () => {
+    const user = userEvent.setup();
+    const dialog = await openManage(user);
+    const row = rowOf(dialog, "Pipelines");
+    expect(row.tagName).toBe("DIV");
+    expect(row.parentElement?.tagName).toBe("LI");
+    expect(row.parentElement).not.toHaveAttribute("role");
+  });
+
   it("shows a save error inline and keeps the draft", async () => {
     const user = userEvent.setup();
     saveOpsArea.mockRejectedValueOnce(new Error("Saving failed: area Pipelines already exists"));
@@ -282,6 +304,22 @@ describe("Escalation setting", () => {
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("Saving failed: boom");
     expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("cannot be closed with Escape while saving", async () => {
+    const user = userEvent.setup();
+    let finish: () => void = () => {};
+    saveOpsSettings.mockReturnValueOnce(new Promise<void>((resolve) => { finish = resolve; }));
+    const dialog = await openEscalation(user);
+
+    fireEvent.submit(dialog.querySelector("form")!);
+    fireEvent.keyDown(document, { key: "Escape" });
+    await user.click(within(dialog).getByRole("button", { name: "Close escalation settings" }));
+    expect(screen.getByRole("dialog", { name: "Escalation days" })).toBeInTheDocument();
+
+    finish();
+    await vi.waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("blocks double submits while saving", async () => {

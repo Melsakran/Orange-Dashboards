@@ -12,12 +12,14 @@ import { createClient } from "@/lib/supabase/client";
 
 function UploadReview({
   result,
+  manualInteractionIds,
   saving,
   saveError,
   onCancel,
   onConfirm,
 }: {
   result: NormalizeResult;
+  manualInteractionIds: ReadonlySet<string>;
   saving: boolean;
   saveError: string | null;
   onCancel: () => void;
@@ -57,13 +59,24 @@ function UploadReview({
     .map((status) => `${counts[status]} ${OPS_STATUS_LABELS[status].toLowerCase()}`)
     .join(", ");
   const mergeCount = result.requests.filter((request) => request.isMergeRequest).length;
+  // The database replaces a manual item whose Interaction ID appears in the file.
+  const fileIds = new Set(result.requests.map((request) => request.interactionId));
+  const collisions = [...manualInteractionIds].filter((id) => fileIds.has(id)).length;
   return (
     <>
       <p className="ops-upload-summary">
         {result.requests.length} requests found — {breakdown} · {mergeCount} merge{" "}
         {mergeCount === 1 ? "request" : "requests"}
       </p>
-      <p>Replacing will update all imported Ops Requests data. Manually added items are kept.</p>
+      {collisions > 0 ? (
+        <p>
+          Replacing will update all imported Ops Requests data. {collisions} manually added{" "}
+          {collisions === 1 ? "item" : "items"} with the same Interaction ID will be replaced by the
+          file&apos;s rows.
+        </p>
+      ) : (
+        <p>Replacing will update all imported Ops Requests data. Manually added items are kept.</p>
+      )}
       {saveError ? (
         <div className="mutation-notice" role="alert">
           <span>{saveError}</span>
@@ -87,7 +100,14 @@ function UploadReview({
   );
 }
 
-export function OpsUpload({ onUploaded }: { onUploaded: () => void }) {
+export function OpsUpload({
+  onUploaded,
+  manualInteractionIds,
+}: {
+  onUploaded: () => void;
+  /** Interaction IDs of the manual items currently on the page. */
+  manualInteractionIds: ReadonlySet<string>;
+}) {
   const { state, close, chooseFile, confirm } = useFileUpload<NormalizeResult>({
     read: async (file) => normalizeRequests(await parseSheetFile(file)),
     canSave: (result) => result.ok,
@@ -118,6 +138,7 @@ export function OpsUpload({ onUploaded }: { onUploaded: () => void }) {
           {state.phase === "review" ? (
             <UploadReview
               result={state.result}
+              manualInteractionIds={manualInteractionIds}
               saving={state.saving}
               saveError={state.saveError}
               onCancel={close}

@@ -58,6 +58,10 @@ function EscalationDialog({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
+  // Closing is blocked while a save is in flight, like the delete confirmation.
+  const handleClose = useCallback(() => {
+    if (!savingRef.current) onClose();
+  }, [onClose]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -86,7 +90,7 @@ function EscalationDialog({
     <ModalDialog
       labelledBy="ops-escalation-title"
       closeLabel="Close escalation settings"
-      onClose={onClose}
+      onClose={handleClose}
       className="admin-modal ops-small-modal"
     >
       <p className="eyebrow">Issues</p>
@@ -120,7 +124,7 @@ function EscalationDialog({
           </div>
         ) : null}
         <div className="form-actions">
-          <button type="button" className="secondary-button" onClick={onClose} disabled={saving}>
+          <button type="button" className="secondary-button" onClick={handleClose} disabled={saving}>
             Cancel
           </button>
           <button type="submit" className="primary-button" disabled={saving}>

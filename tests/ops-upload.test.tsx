@@ -4,6 +4,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { OpsRequestsView } from "@/components/ops/ops-requests-view";
 import { emptyOpsDataset } from "@/lib/ops/types";
+import { makeOpsRequest } from "./fixtures/ops-requests";
 
 const refresh = vi.hoisted(() => vi.fn());
 const replaceOpsRequests = vi.hoisted(() => vi.fn());
@@ -47,6 +48,56 @@ describe("Ops Requests upload", () => {
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(replaceOpsRequests).not.toHaveBeenCalled();
+  });
+
+  it("warns when manual items share an Interaction ID with the file and says they are replaced", async () => {
+    const user = userEvent.setup();
+    const dataset = {
+      ...emptyDataset,
+      requests: [
+        makeOpsRequest({ interactionId: "SD1265202", source: "manual" }),
+        makeOpsRequest({ interactionId: "SD1265508", source: "manual" }),
+        makeOpsRequest({ interactionId: "MANUAL-ONLY", source: "manual" }),
+        makeOpsRequest({ interactionId: "SD1265203", source: "import" }),
+      ],
+    };
+    render(<OpsRequestsView dataset={dataset} isAdmin />);
+
+    await user.upload(chooseFile(), new File([sampleCsv], "export.csv", { type: "text/csv" }));
+    const dialog = await screen.findByRole("dialog", { name: "export.csv" });
+    expect(dialog).toHaveTextContent(
+      "2 manually added items with the same Interaction ID will be replaced by the file's rows.",
+    );
+    expect(dialog).not.toHaveTextContent("Manually added items are kept.");
+  });
+
+  it("uses the singular for one colliding manual item", async () => {
+    const user = userEvent.setup();
+    const dataset = {
+      ...emptyDataset,
+      requests: [makeOpsRequest({ interactionId: "SD1265202", source: "manual" })],
+    };
+    render(<OpsRequestsView dataset={dataset} isAdmin />);
+
+    await user.upload(chooseFile(), new File([sampleCsv], "export.csv", { type: "text/csv" }));
+    const dialog = await screen.findByRole("dialog", { name: "export.csv" });
+    expect(dialog).toHaveTextContent(
+      "1 manually added item with the same Interaction ID will be replaced by the file's rows.",
+    );
+  });
+
+  it("keeps the reassurance when no manual item collides with the file", async () => {
+    const user = userEvent.setup();
+    const dataset = {
+      ...emptyDataset,
+      requests: [makeOpsRequest({ interactionId: "MANUAL-ONLY", source: "manual" })],
+    };
+    render(<OpsRequestsView dataset={dataset} isAdmin />);
+
+    await user.upload(chooseFile(), new File([sampleCsv], "export.csv", { type: "text/csv" }));
+    const dialog = await screen.findByRole("dialog", { name: "export.csv" });
+    expect(dialog).toHaveTextContent("Manually added items are kept.");
+    expect(dialog).not.toHaveTextContent("will be replaced by the file");
   });
 
   it("replaces the data and refreshes the page", async () => {

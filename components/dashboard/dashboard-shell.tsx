@@ -823,6 +823,7 @@ export function DashboardShell({
       setRequestsTab("merge");
     } else {
       url.searchParams.set("view", next);
+      if (next !== "requests") url.searchParams.delete("tab");
     }
     window.history.replaceState(window.history.state, "", url);
   }
