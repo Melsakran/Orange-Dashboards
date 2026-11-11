@@ -18,7 +18,11 @@ import { hasSupabasePublicEnv } from "@/lib/supabase/env";
 
 interface WorkspacePageProps {
   params: Promise<{ workspaceSlug: string }>;
-  searchParams: Promise<{ view?: string | string[]; date?: string | string[] }>;
+  searchParams: Promise<{
+    view?: string | string[];
+    date?: string | string[];
+    tab?: string | string[];
+  }>;
 }
 
 // Access controls are derived from the current request's Supabase session.
@@ -60,7 +64,7 @@ async function loadDailyReport(requestedDate: string | null, isAdmin: boolean) {
 
 export default async function WorkspacePage({ params, searchParams }: WorkspacePageProps) {
   const { workspaceSlug } = await params;
-  const { view, date } = await searchParams;
+  const { view, date, tab } = await searchParams;
   const result = await resolveInitialDashboard(workspaceSlug, {
     envConfigured: hasSupabasePublicEnv(),
     createClient,
@@ -90,6 +94,7 @@ export default async function WorkspacePage({ params, searchParams }: WorkspaceP
     requests && view === "requests" ? "requests"
       : dailyReport && view === "daily-report" ? "daily-report"
         : "projects";
+  const initialTab = tab === "issues" ? "issues" : "merge";
 
   return (
     <DashboardShell
@@ -100,6 +105,7 @@ export default async function WorkspacePage({ params, searchParams }: WorkspaceP
       requests={requests}
       dailyReport={dailyReport}
       initialView={initialView}
+      initialTab={initialTab}
     />
   );
 }

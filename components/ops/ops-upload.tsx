@@ -63,7 +63,7 @@ function UploadReview({
         {result.requests.length} requests found — {breakdown} · {mergeCount} merge{" "}
         {mergeCount === 1 ? "request" : "requests"}
       </p>
-      <p>Replacing will delete all current Ops Requests data and show only this file.</p>
+      <p>Replacing will update all imported Ops Requests data. Manually added items are kept.</p>
       {saveError ? (
         <div className="mutation-notice" role="alert">
           <span>{saveError}</span>

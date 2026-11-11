@@ -1,39 +1,20 @@
 "use client";
 
-import { useCallback, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import {
-  breakdownByClosureCode,
-  formatUploadedAt,
-  groupByPerson,
-  groupByRequestKind,
-  summarizeKpis,
-  wallClockNow,
-  weeklyBuckets,
-  type OpsKindFilter,
-  type OpsStatusFilter,
-} from "@/lib/ops/analytics";
+import { formatUploadedAt } from "@/lib/ops/analytics";
 import type { OpsDataset } from "@/lib/ops/types";
-import { OpsBreakdowns } from "./ops-breakdowns";
-import { OpsKpis } from "./ops-kpis";
-import { OpsTicketList } from "./ops-ticket-list";
-import { OpsTimeline } from "./ops-timeline";
+import { SegmentedToggle } from "@/components/ui/segmented-toggle";
+import { IssuesPanel } from "./issues-panel";
+import { MergeRequestsPanel } from "./merge-requests-panel";
 import { OpsUpload } from "./ops-upload";
 
-let clientNowMs: number | null = null;
+export type OpsRequestsTab = "merge" | "issues";
 
-function subscribeToNow() {
-  return () => undefined;
-}
-
-function getClientNow() {
-  clientNowMs ??= wallClockNow();
-  return clientNowMs;
-}
-
-function getServerNow() {
-  return null;
-}
+const TAB_OPTIONS: ReadonlyArray<{ value: OpsRequestsTab; label: string }> = [
+  { value: "merge", label: "Merge Requests" },
+  { value: "issues", label: "Issues" },
+];
 
 function uploadSummary(dataset: OpsDataset) {
   const { upload } = dataset;
@@ -47,24 +28,26 @@ export function OpsRequestsView({
   isAdmin,
   loadError = null,
   toolbar,
+  initialTab = "merge",
 }: {
   dataset: OpsDataset;
   isAdmin: boolean;
   loadError?: string | null;
   toolbar?: ReactNode;
+  initialTab?: OpsRequestsTab;
 }) {
   const { requests } = dataset;
-  const nowMs = useSyncExternalStore(subscribeToNow, getClientNow, getServerNow);
-  const [statusFilter, setStatusFilter] = useState<OpsStatusFilter>("all");
-  const [kindFilter, setKindFilter] = useState<OpsKindFilter>("all");
+  const [tab, setTab] = useState<OpsRequestsTab>(initialTab);
   const router = useRouter();
   const refresh = useCallback(() => router.refresh(), [router]);
 
-  const kpis = useMemo(() => summarizeKpis(requests, nowMs), [nowMs, requests]);
-  const closureCodes = useMemo(() => breakdownByClosureCode(requests), [requests]);
-  const requestKinds = useMemo(() => groupByRequestKind(requests), [requests]);
-  const requestors = useMemo(() => groupByPerson(requests, "requestor"), [requests]);
-  const weeks = useMemo(() => weeklyBuckets(requests), [requests]);
+  function changeTab(next: OpsRequestsTab) {
+    setTab(next);
+    const url = new URL(window.location.href);
+    if (next === "merge") url.searchParams.delete("tab");
+    else url.searchParams.set("tab", next);
+    window.history.replaceState(window.history.state, "", url);
+  }
 
   return (
     <div className="ops-requests-view">
@@ -78,38 +61,20 @@ export function OpsRequestsView({
         </div>
       </div>
 
+      <div className="kpi-row-header ops-tab-row">
+        <SegmentedToggle label="Request category" options={TAB_OPTIONS} value={tab} onChange={changeTab} />
+        {/* Slot for the active tab's admin actions. */}
+        <div className="ops-tab-actions" />
+      </div>
+
       {loadError ? (
         <div className="mutation-notice" role="alert">
           <span>{loadError}</span>
         </div>
-      ) : requests.length ? (
-        <>
-          <OpsKpis
-            kpis={kpis}
-            statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
-            kindFilter={kindFilter}
-            onKindFilterChange={setKindFilter}
-          />
-          <OpsTimeline weeks={weeks} />
-          <OpsBreakdowns closureCodes={closureCodes} requestKinds={requestKinds} requestors={requestors} />
-          <OpsTicketList
-            requests={requests}
-            statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
-            kindFilter={kindFilter}
-            onKindFilterChange={setKindFilter}
-          />
-        </>
+      ) : tab === "issues" ? (
+        <IssuesPanel requests={requests} />
       ) : (
-        <section className="view-state ops-empty">
-          <p className="view-state-title">No data uploaded yet</p>
-          <p>
-            {isAdmin
-              ? "Use Upload above to add a service-desk export."
-              : "An admin hasn't uploaded a service-desk export yet."}
-          </p>
-        </section>
+        <MergeRequestsPanel requests={requests} isAdmin={isAdmin} />
       )}
     </div>
   );

@@ -63,7 +63,7 @@ import { ProjectCard } from "./project-card";
 import { ProjectDetailsModal } from "./project-details-modal";
 import { ProjectTierToggle } from "./project-tier-toggle";
 import { SegmentedToggle } from "@/components/ui/segmented-toggle";
-import { OpsRequestsView } from "@/components/ops/ops-requests-view";
+import { OpsRequestsView, type OpsRequestsTab } from "@/components/ops/ops-requests-view";
 import { PeDailyView } from "@/components/pe-daily/pe-daily-view";
 import type { OpsDataset } from "@/lib/ops/types";
 import type { PeDailyPageData } from "@/lib/pe-daily/types";
@@ -96,6 +96,7 @@ interface DashboardShellProps {
     isAdmin: boolean;
   };
   initialView?: DashboardView;
+  initialTab?: OpsRequestsTab;
 }
 
 interface EditorState {
@@ -320,6 +321,7 @@ export function DashboardShell({
   requests,
   dailyReport,
   initialView = "projects",
+  initialTab = "merge",
 }: DashboardShellProps) {
   const realtime = useWorkspaceRealtime(initialDashboard, { enabled: source === "database" });
   const [workspace, setWorkspace] = useState(realtime.data);
@@ -331,6 +333,8 @@ export function DashboardShell({
   const [activeFilter, setActiveFilter] = useState<StatusFilter>("all");
   const [selectedTier, setSelectedTier] = useState<ProjectTier>("critical");
   const [view, setView] = useState<DashboardView>(initialView);
+  // Tab the Requests view opens on; reset when leaving it so it matches the cleared URL.
+  const [requestsTab, setRequestsTab] = useState<OpsRequestsTab>(initialTab);
   const [liveVariant, setLiveVariant] = useState<LiveVariantFilter>("live");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorState | null>(null);
@@ -815,6 +819,8 @@ export function DashboardShell({
     if (next === "projects") {
       url.searchParams.delete("view");
       url.searchParams.delete("date");
+      url.searchParams.delete("tab");
+      setRequestsTab("merge");
     } else {
       url.searchParams.set("view", next);
     }
@@ -933,6 +939,7 @@ export function DashboardShell({
             isAdmin={requests.isAdmin}
             loadError={requests.loadError}
             toolbar={viewToggle}
+            initialTab={requestsTab}
           />
         ) : effectiveView === "daily-report" && dailyReport ? (
           <PeDailyView

@@ -3048,3 +3048,26 @@ footer {
   font-weight: 750;
   white-space: nowrap;
 }
+
+.ops-manual-flag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e8f1f8;
+  color: #246a91;
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.ops-tab-row {
+  margin-bottom: 18px;
+}
+
+.ops-tab-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}

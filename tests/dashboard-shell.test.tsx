@@ -376,6 +376,33 @@ describe("DashboardShell", () => {
       expect(screen.getByRole("region", { name: "Workspace status overview" })).toBeInTheDocument();
     });
 
+    it("clears both view and tab when switching back to Projects", async () => {
+      const user = userEvent.setup();
+      render(<DashboardShell initialDashboard={datalakeDashboard} source="fixture" requests={requests} />);
+      const viewButton = (name: string) =>
+        within(screen.getByRole("group", { name: "Dashboard view" })).getByRole("button", { name });
+
+      await user.click(viewButton("Requests"));
+      await user.click(screen.getByRole("button", { name: "Issues" }));
+      expect(window.location.search).toBe("?view=requests&tab=issues");
+
+      await user.click(viewButton("Projects"));
+      expect(window.location.search).toBe("");
+    });
+
+    it("opens straight on the Issues tab from the link", () => {
+      render(
+        <DashboardShell
+          initialDashboard={datalakeDashboard}
+          source="fixture"
+          requests={requests}
+          initialView="requests"
+          initialTab="issues"
+        />,
+      );
+      expect(screen.getByRole("button", { name: "Issues" })).toHaveAttribute("aria-pressed", "true");
+    });
+
     it("opens straight on Requests from the link", () => {
       render(
         <DashboardShell

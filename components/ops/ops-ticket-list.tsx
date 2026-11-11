@@ -7,11 +7,9 @@ import {
   formatDuration,
   formatTimestamp,
   resolutionMs,
-  type OpsKindFilter,
   type OpsStatusFilter,
 } from "@/lib/ops/analytics";
 import {
-  OPS_REQUEST_KIND_LABELS,
   OPS_STATUSES,
   OPS_STATUS_LABELS,
   type OpsRequest,
@@ -58,22 +56,18 @@ export function OpsTicketList({
   requests,
   statusFilter,
   onStatusFilterChange,
-  kindFilter,
-  onKindFilterChange,
 }: {
   requests: OpsRequest[];
   statusFilter: OpsStatusFilter;
   onStatusFilterChange: (filter: OpsStatusFilter) => void;
-  kindFilter: OpsKindFilter;
-  onKindFilterChange: (filter: OpsKindFilter) => void;
 }) {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const closeDetails = useCallback(() => setSelectedId(null), []);
 
   const visible = useMemo(
-    () => filterRequests(requests, { status: statusFilter, kind: kindFilter, query }),
-    [kindFilter, query, requests, statusFilter],
+    () => filterRequests(requests, { status: statusFilter, query }),
+    [query, requests, statusFilter],
   );
   const selected = requests.find((request) => request.interactionId === selectedId) ?? null;
 
@@ -103,17 +97,6 @@ export function OpsTicketList({
             {OPS_STATUSES.map((status) => (
               <option key={status} value={status}>{OPS_STATUS_LABELS[status]}</option>
             ))}
-          </select>
-        </label>
-        <label className="form-field">
-          <span>Request type</span>
-          <select
-            value={kindFilter}
-            onChange={(event) => onKindFilterChange(event.target.value as OpsKindFilter)}
-          >
-            <option value="all">All request types</option>
-            <option value="merge">{OPS_REQUEST_KIND_LABELS.merge}</option>
-            <option value="other">{OPS_REQUEST_KIND_LABELS.other}</option>
           </select>
         </label>
       </div>
@@ -149,6 +132,9 @@ export function OpsTicketList({
                     {request.requestTitle || "—"}
                     {request.isMergeRequest ? (
                       <span className="ops-merge-flag">Merge request</span>
+                    ) : null}
+                    {request.source === "manual" ? (
+                      <span className="ops-manual-flag">Manual</span>
                     ) : null}
                   </td>
                   <td>

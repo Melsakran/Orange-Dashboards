@@ -1,11 +1,4 @@
-import {
-  OPS_REQUEST_KIND_LABELS,
-  OPS_STATUSES,
-  requestKindOf,
-  type OpsRequest,
-  type OpsRequestKind,
-  type OpsStatus,
-} from "./types";
+import { OPS_STATUSES, type OpsRequest, type OpsStatus } from "./types";
 
 export const HOUR_MS = 3_600_000;
 export const DAY_MS = 24 * HOUR_MS;
@@ -14,18 +7,15 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 const NONE_LABEL = "(none)";
 
 export type OpsStatusFilter = OpsStatus | "all";
-export type OpsKindFilter = OpsRequestKind | "all";
 
 export interface RequestFilters {
   status: OpsStatusFilter;
-  kind: OpsKindFilter;
   query: string;
 }
 
 export interface OpsKpis {
   total: number;
   counts: Record<OpsStatus, number>;
-  kinds: Record<OpsRequestKind, number>;
   closureRate: number | null;
   avgResolutionMs: number | null;
   medianResolutionMs: number | null;
@@ -113,10 +103,6 @@ export function summarizeKpis(requests: OpsRequest[], nowMs: number | null): Ops
   return {
     total: requests.length,
     counts,
-    kinds: {
-      merge: requests.filter((request) => request.isMergeRequest).length,
-      other: requests.filter((request) => !request.isMergeRequest).length,
-    },
     closureRate: requests.length ? counts.closed / requests.length : null,
     avgResolutionMs: average(resolved),
     medianResolutionMs: median(resolved),
@@ -141,21 +127,6 @@ export function breakdownByClosureCode(requests: OpsRequest[]): ClosureCodeRow[]
   return [...counts.entries()]
     .map(([label, count]) => ({ label, count, share: count / requests.length }))
     .sort(byCountThenLabel);
-}
-
-export function groupByRequestKind(requests: OpsRequest[]): PersonRow[] {
-  return (["merge", "other"] as const).map((kind) => {
-    const group = requests.filter((request) => requestKindOf(request) === kind);
-    const resolved = resolutions(group);
-    return {
-      key: kind,
-      name: OPS_REQUEST_KIND_LABELS[kind],
-      total: group.length,
-      counts: countByStatus(group),
-      avgResolutionMs: average(resolved),
-      medianResolutionMs: median(resolved),
-    };
-  });
 }
 
 export function groupByPerson(
@@ -239,7 +210,6 @@ export function filterRequests(requests: OpsRequest[], filters: RequestFilters):
   const query = filters.query.trim().toLowerCase();
   return requests
     .filter((request) => filters.status === "all" || request.status === filters.status)
-    .filter((request) => filters.kind === "all" || requestKindOf(request) === filters.kind)
     .filter((request) => !query || [
       request.interactionId,
       request.requestTitle,

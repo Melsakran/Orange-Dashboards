@@ -42,7 +42,7 @@ describe("Ops Requests upload", () => {
 
     const dialog = await screen.findByRole("dialog", { name: "export.csv" });
     expect(dialog).toHaveTextContent("19 requests found — 0 open, 0 in progress, 0 pending, 19 closed · 0 merge requests");
-    expect(dialog).toHaveTextContent("Replacing will delete all current Ops Requests data");
+    expect(dialog).toHaveTextContent("Replacing will update all imported Ops Requests data. Manually added items are kept.");
 
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

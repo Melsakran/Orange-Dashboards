@@ -67,17 +67,6 @@ export interface OpsRequest {
   isMergeRequest: boolean;
 }
 
-export type OpsRequestKind = "merge" | "other";
-
-export const OPS_REQUEST_KIND_LABELS: Record<OpsRequestKind, string> = {
-  merge: "Merge requests",
-  other: "Other requests",
-};
-
-export function requestKindOf(request: Pick<OpsRequest, "isMergeRequest">): OpsRequestKind {
-  return request.isMergeRequest ? "merge" : "other";
-}
-
 export interface OpsUpload {
   uploadedAt: string;
   uploadedByEmail: string | null;
